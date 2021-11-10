@@ -241,6 +241,51 @@ def encodeBase32 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
     if x == 4 then str := str.dropRight 1
     return str
 
+def encodeBase8 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
+  let x := ByteArray.size input % 3
+  let mut bytes := input
+  let mut str := ""
+  if x == 1 then bytes := bytes.append [0x00, 0x00].toByteArray
+  if x == 2 then bytes := bytes.append [0x00].toByteArray
+  for i in [:(bytes.size / 3)] do
+    let b0 := bytes.data[3 * i]
+    let b1 := bytes.data[3 * i + 1]
+    let b2 := bytes.data[3 * i + 2]
+    let s0 := b0.shiftRight 5
+    let s1 := (b0.land 0b00011100).shiftRight 2
+    let s2 := UInt8.xor
+      ((b0.land 0b00000011).shiftLeft 1) 
+      ((b1.land 0b10000000).shiftRight 7)
+    let s3 := (b1.land 0b01110000).shiftRight 4
+    let s4 := (b1.land 0b00001110).shiftRight 1 
+    let s5 := UInt8.xor
+      ((b1.land 0b00000001).shiftLeft 2) 
+      ((b2.land 0b11000000).shiftRight 6)
+    let s6 := (b2.land 0b00111000).shiftRight 3
+    let s7 := (b2.land 0b00000111)
+    str := str.push (alpha.get s0.toNat)
+    str := str.push (alpha.get s1.toNat)
+    str := str.push (alpha.get s2.toNat)
+    str := str.push (alpha.get s3.toNat)
+    str := str.push (alpha.get s4.toNat)
+    str := str.push (alpha.get s5.toNat)
+    str := str.push (alpha.get s6.toNat)
+    str := str.push (alpha.get s7.toNat)
+  if pad then do
+    if x == 1 then 
+      str := str.set (str.length - 1) '='
+      str := str.set (str.length - 2) '='
+      str := str.set (str.length - 3) '='
+      str := str.set (str.length - 4) '='
+      str := str.set (str.length - 5) '='
+    if x == 2 then 
+      str := str.set (str.length - 1) '='
+      str := str.set (str.length - 2) '='
+    return str
+  else 
+    if x == 1 then str := str.dropRight 5
+    if x == 2 then str := str.dropRight 2
+    return str
 
 --def decodeBase64 (input: String) : ByteArray := do
 --  let mut str := input
@@ -271,7 +316,7 @@ def encode (base: Multibase) (input : ByteArray) : String :=
   String.append code $ 
   match base with
   | base2 => padBin core
-  | base8 => core
+  | base8 => encodeBase8 false Alphabet.base8 input
   | base10 => padZeros alphabet zs $ core
   | base16 => core
   | base16upper => core
@@ -379,9 +424,6 @@ def encode (base: Multibase) (input : ByteArray) : String :=
     #eval encode base16upper "foob".toUTF8   == "F666F6F62"
     #eval encode base16upper "fooba".toUTF8  == "F666F6F6261"
     #eval encode base16upper "foobar".toUTF8 == "F666F6F626172"
-
-
-
 
     #eval encode base16 "hello world".toUTF8 == "f68656c6c6f20776f726c64"
     #eval encode base16upper "hello world".toUTF8 == "F68656C6C6F20776F726C64"
