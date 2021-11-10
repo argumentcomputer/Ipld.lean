@@ -142,7 +142,7 @@ def pad64 (input : String) : String :=
   let pad := (List.replicate ((4 - (input.length % 4)) % 4) '=').asString
   input.append pad
 
-def encodeBase64 (pad: Bool) (input : ByteArray) : String := do
+def encodeBase64 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
   let x := ByteArray.size input % 3
   let mut bytes := input
   let mut str := ""
@@ -160,10 +160,10 @@ def encodeBase64 (pad: Bool) (input : ByteArray) : String := do
       ((b1.land 0b00001111).shiftLeft 2) 
       ((b2.land 0b11000000).shiftRight 6)
     let s3 := b2.land 0b00111111
-    str := str.push (Alphabet.base64.get s0.toNat)
-    str := str.push (Alphabet.base64.get s1.toNat)
-    str := str.push (Alphabet.base64.get s2.toNat)
-    str := str.push (Alphabet.base64.get s3.toNat)
+    str := str.push (alpha.get s0.toNat)
+    str := str.push (alpha.get s1.toNat)
+    str := str.push (alpha.get s2.toNat)
+    str := str.push (alpha.get s3.toNat)
   if pad then do
     if x == 1 then 
       str := str.set (str.length - 1) '='
@@ -175,6 +175,9 @@ def encodeBase64 (pad: Bool) (input : ByteArray) : String := do
     if x == 1 then str := str.dropRight 2
     if x == 2 then str := str.dropRight 1
     return str
+
+
+
 
 --def decodeBase64 (input: String) : ByteArray := do
 --  let mut str := input
@@ -222,11 +225,10 @@ def encode (base: Multibase) (input : ByteArray) : String :=
   | base36upper => core
   | base58btc => core
   | base58flickr => core
-  | base64 => core
-  | base64pad => pad64 $ core
-  | base64url => core
-  | base64urlpad => pad64 $ core
-
+  | base64 => encodeBase64 false Alphabet.base64 input
+  | base64pad => encodeBase64 true Alphabet.base64 input
+  | base64url => encodeBase64 false Alphabet.base64url input
+  | base64urlpad => encodeBase64 true Alphabet.base64url input
 
   namespace Test
     private def base2ex1 : String := encode base2 ({ data := #[0x58, 0x59, 0x5a]})
@@ -267,19 +269,54 @@ def encode (base: Multibase) (input : ByteArray) : String :=
     #eval encode base36upper       basic == "K2LCPZO5YIKIDYNFL"
     #eval encode base58flickr      basic == "Z7Pznk19XTTzBtx"
     #eval encode base58btc         basic == "z7paNL19xttacUY"
-    #eval encode base64            basic -- == "meWVzIG1hbmkgIQ"
-    #eval encode base64pad         basic -- == "MeWVzIG1hbmkgIQ=="
-    #eval encode base64url         basic -- == "ueWVzIG1hbmkgIQ"
-    #eval encode base64urlpad      basic -- == "UeWVzIG1hbmkgIQ=="
+    #eval encode base64            basic == "meWVzIG1hbmkgIQ"
+    #eval encode base64pad         basic == "MeWVzIG1hbmkgIQ=="
+    #eval encode base64url         basic == "ueWVzIG1hbmkgIQ"
+    #eval encode base64urlpad      basic == "UeWVzIG1hbmkgIQ=="
 
     #eval "MA".toUTF8
     #eval encode base64 {data := #[0x4d, 0x61, 0x00] }
     #eval Nat.fromByteArrayBE "MA".toUTF8
     #eval encode base64 "Man".toUTF8
     #eval encode base64 "yes".toUTF8
-    #eval encode base64 "A".toUTF8 -- == mQQ
-    #eval encode base64 "AA".toUTF8 -- == mQUE
-    #eval encode base64 "AAA".toUTF8 -- == mQUFB
+    #eval encode base64 "A".toUTF8 == "mQQ"
+    #eval encode base64 "AA".toUTF8 == "mQUE"
+    #eval encode base64 "AAA".toUTF8 == "mQUFB"
+
+
+-- RFC4648 Test Vectors: https://datatracker.ietf.org/doc/html/rfc4648#section-10
+    #eval encode base64pad "".toUTF8       == ""
+    #eval encode base64pad "f".toUTF8      == "MZg=="
+    #eval encode base64pad "fo".toUTF8     == "MZm8g="
+    #eval encode base64pad "foo".toUTF8    == "MZm9v"
+    #eval encode base64pad "foob".toUTF8   == "MZm9vYg=="
+    #eval encode base64pad "fooba".toUTF8  == "MZm9vYmE="
+    #eval encode base64pad "foobar".toUTF8 == "MZm9vYmFy"
+
+    #eval encode base32padupper "".toUTF8       == ""
+    #eval encode base32padupper "f".toUTF8      == "CMY======"
+    #eval encode base32padupper "fo".toUTF8     == "CMZXQ===="
+    #eval encode base32padupper "foo".toUTF8    == "CMZXW6==="
+    #eval encode base32padupper "foob".toUTF8   == "CMZXW6YQ="
+    #eval encode base32padupper "fooba".toUTF8  == "CMZXW6YTB"
+    #eval encode base32padupper "foobar".toUTF8 == "CMZXW6YTBOI======"
+
+    #eval encode base32hexpadupper "".toUTF8       == ""
+    #eval encode base32hexpadupper "f".toUTF8      == "TCO======"
+    #eval encode base32hexpadupper "fo".toUTF8     == "TCPNG===="
+    #eval encode base32hexpadupper "foo".toUTF8    == "TCPNMU==="
+    #eval encode base32hexpadupper "foob".toUTF8   == "TCPNMUOG="
+    #eval encode base32hexpadupper "fooba".toUTF8  == "TCPNMUOJ1"
+    #eval encode base32hexpadupper "foobar".toUTF8 == "TCPNMUOJ1E8======"
+
+    #eval encode base16upper "".toUTF8       == ""
+    #eval encode base16upper "f".toUTF8      == "F66"
+    #eval encode base16upper "fo".toUTF8     == "F666F"
+    #eval encode base16upper "foo".toUTF8    == "F666F6F"
+    #eval encode base16upper "foob".toUTF8   == "F666F6F62"
+    #eval encode base16upper "fooba".toUTF8  == "F666F6F6261"
+    #eval encode base16upper "foobar".toUTF8 == "F666F6F626172"
+
 
 
 
