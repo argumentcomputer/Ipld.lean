@@ -1,7 +1,12 @@
 import Ipld.UnsignedVarint
-import Ipld.Cid
 import Ipld.Multihash
 import Ipld.Multibase
+import Ipld.Cid
+import Ipld.Ipld
+-- import Blake3
 
 def main : IO Unit :=
   IO.println "Hello, world!"
+
+--def main : IO Unit :=
+--  println! "Hello, world! {Blake3.hash "hello".toByteArray}"

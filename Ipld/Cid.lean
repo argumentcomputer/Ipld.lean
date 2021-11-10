@@ -4,3 +4,4 @@ structure Cid where
   version : Nat
   codec: Nat
   hash: Multihash
+  deriving Inhabited
