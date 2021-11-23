@@ -46,6 +46,7 @@
 
       # `nix develop`
       devShell = pkgs.mkShell {
+        inputsFrom = [ Ipld.executable ];
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
