@@ -49,7 +49,7 @@
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
-        LEAN_PATH = "${leanPkgs.Lean.modRoot}:${Blake3.modRoot}:${Neptune.modRoot}";
+        LEAN_PATH = "${leanPkgs.Lean.modRoot}:${Blake3.modRoot}:${Neptune.modRoot}:${Ipld.modRoot}";
       };
     });
 }
