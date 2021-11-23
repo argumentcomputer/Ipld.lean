@@ -29,7 +29,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
       leanPkgs = lean.packages.${system};
       Ipld = leanPkgs.buildLeanPackage {
-        src = ./src;
+        src = ./.;
         name = "Ipld";
         deps = [ lean-blake3.project.${system} lean-neptune.project.${system} ];
       };
