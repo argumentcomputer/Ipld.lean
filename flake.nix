@@ -36,7 +36,7 @@
     in
     {
       project = Ipld;
-      packages = {
+      packages = Ipld // {
         "Ipld" = Ipld.executable;
       };
 
