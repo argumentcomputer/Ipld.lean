@@ -28,10 +28,12 @@
       lib = utils.lib.${system};
       pkgs = nixpkgs.legacyPackages.${system};
       leanPkgs = lean.packages.${system};
+      Blake3 = lean-blake3.project.${system};
+      Neptune = lean-neptune.project.${system};
       Ipld = leanPkgs.buildLeanPackage {
         src = ./.;
         name = "Ipld";
-        deps = [ lean-blake3.project.${system} lean-neptune.project.${system} ];
+        deps = [ Blake3 Neptune ];
       };
     in
     {
@@ -44,11 +46,10 @@
 
       # `nix develop`
       devShell = pkgs.mkShell {
-        inputsFrom = builtins.attrValues self.packages.${system};
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
-        LEAN_PATH = "${leanPkgs.Lean.modRoot}";
+        LEAN_PATH = "${leanPkgs.Lean.modRoot}:${Blake3.modRoot}:${Neptune.modRoot}";
       };
     });
 }
