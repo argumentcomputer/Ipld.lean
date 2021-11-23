@@ -1,4 +1,8 @@
 [package]
 name = "Ipld"
 version = "0.1"
-lean_version = "leanprover/lean4:nightly-2021-11-10"
+lean_version = "leanprover/lean4:nightly-2021-11-17"
+
+[dependencies]
+blake3 = { git = "https://github.com/yatima-inc/lean-blake3", branch = "sb/leanpkg", rev = "b832622a5a3229510ce861c54b1d109f790cc96e" }
+
