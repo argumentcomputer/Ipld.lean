@@ -46,10 +46,12 @@
 
       # `nix develop`
       devShell = pkgs.mkShell {
+        inputsFrom = [ Ipld.executable ];
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
-        LEAN_PATH = "${leanPkgs.Lean.modRoot}:${Blake3.modRoot}:${Neptune.modRoot}:${Ipld.modRoot}";
+        LEAN_PATH = lib.concatStringsSep ":" (map (d: "${d.modRoot}") (builtins.attrValues Ipld.allExternalDeps));
+        LEAN_SRC_PATH = lib.concatStringsSep ":" (map (d: "${d.src}") (builtins.attrValues Ipld.allExternalDeps));
       };
     });
 }
