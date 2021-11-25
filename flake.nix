@@ -35,6 +35,7 @@
         name = "Ipld";
         deps = [ Blake3 Neptune ];
       };
+      joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ (builtins.attrValues Ipld.allExternalDeps)));
     in
     {
       project = Ipld;
@@ -50,8 +51,8 @@
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
-        LEAN_PATH = lib.concatStringsSep ":" (map (d: "${d.modRoot}") (builtins.attrValues Ipld.allExternalDeps));
-        LEAN_SRC_PATH = lib.concatStringsSep ":" (map (d: "${d.src}") (builtins.attrValues Ipld.allExternalDeps));
+        LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
+        LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
       };
     });
 }
