@@ -1,23 +1,40 @@
 import Ipld.Utils
+import Ipld.Multibase.Impl
 
+/-- An instance of the Multibase specification for a given base `β` -/
 class Multibase (β: Type) where
-  code  : Char
-  alpha : String
-  read  : Char → Option Nat
-  fix   : Bool
-  pad   : Bool
+  code      : Char
+  alpha     : String
+  digit     : Nat → Char
+  read      : Char → Option Nat
+  rfc4648   : Bool
+  pad       : Bool
 
 namespace Multibase
+  -- We define associated functions derived from the class in the same namespace
+  -- Ideally there would be a way to make `β` implicit and inferrable
   variable (β: Type)
   def zero [Multibase β]: Char := (alpha β)[0]
   def base [Multibase β]: Nat  := (alpha β).length
   def log2Base [Multibase β]: Nat  := Nat.log2' (base β)
 
-  -- This is a little slow
-  def digit [Multibase β] (i : Nat): Char :=
+  -- This computes the least-common-multiple of the (log2 base) and 8, in order
+  -- for us to determine the minimal number of padding bits to add in rfc4648
+  def lcm8 [Multibase β] : Nat :=
+    let x := (log2Base β)
+    if x % 8 == 0 then x else
+    if x % 4 == 0 then x * 2 else
+    if x % 2 == 0 then x * 4 else
+    x * 8
+
+  -- This is a little slow. We gain some in-kernel performance by
+  -- requiring Multibase instances to hardcode a `digit` function, even though
+  -- semantically it's derivable from `alpha`
+  def digit' [Multibase β] (i : Nat): Char :=
     if i >= (alpha β).length then zero β else String.get (alpha β) i
 
-  -- This is very slow
+  -- This is very slow because of the String.posOf call. We can't reduce
+  -- encodings in-kernel unless we hardcode the `read` function in the instance
   def read' [Multibase β] (c: Char): Option Nat :=
    let x := String.posOf (alpha β) c
    if x == (alpha β).length then Option.none else Option.some x
@@ -44,26 +61,29 @@ namespace Multibase
     let lzs := ByteArray.leadingZeroBits x
     let log := Multibase.log2Base β
     let left := String.mk (List.replicate (lzs / log) '0')
-    let llen := (log - x.size % log)
-    let x := if Multibase.fix β then ByteArray.pushZeros x llen else x
+    let rfc := Multibase.rfc4648 β
+    let lcm := Multibase.lcm8 β / 8
+    let rfcbytes := (lcm - x.size % lcm) % lcm
+    let x := if rfc then ByteArray.pushZeros x rfcbytes else x
     let n := Nat.fromByteArrayBE x
     let str := (Multibase.toStringCore β (n+1) n "")
-    let rlen := (log * llen - 1)
-    let str := if Multibase.fix β then str.dropRight rlen else str
-    let str := if Multibase.fix β && Multibase.pad β then padRight str rlen else str
-    String.singleton (Multibase.code β) ++ left ++ str
+    let rfcchars := ((rfcbytes * 8) / log)
+    let str' := if rfc then str.dropRight rfcchars else str
+    let str' := if rfc && Multibase.pad β
+      then Multibase.padRight str' rfcchars else str'
+    String.singleton (Multibase.code β) ++ left ++ str'
 
-  --def fromBaseCore [Multibase β]: Nat → Nat → String → Option Nat
-  --| 0, acc, input => Option.some acc
-  --| fuel+1, acc, "" => Option.some acc
-  --| fuel+1, acc, input => do
-  --let dig := (fromDigit β input[0])
-  --Option.bind dig (fun d =>
-  --  fromBaseCore fuel (acc * (base β) + d) (String.drop input 1))
+  def fromStringCore [Multibase β]: Nat → Nat → String → Option Nat
+  | 0, acc, input => Option.some acc
+  | fuel+1, acc, "" => Option.some acc
+  | fuel+1, acc, input => do
+  let dig := (read β input[0])
+  Option.bind dig (fun d =>
+    fromStringCore fuel (acc * (base β) + d) (String.drop input 1))
 
-  --def fromBase [m: Multibase β]: String -> Option Nat
-  --| "" => Option.none
-  --| s => fromBaseCore β (s.length) 0 s
+  def fromString [m: Multibase β]: String -> Option Nat
+  | "" => Option.none
+  | s => fromStringCore β (s.length) 0 s
 
 end Multibase
 
@@ -83,193 +103,337 @@ structure Base32PadUpper
 structure Base32Z
 structure Base36
 structure Base36Upper
-structure Base58Btc
+structure Base58BTC
 structure Base58Flickr
 structure Base64
 structure Base64Pad
-structure Base64Url
-structure Base64UrlPad
+structure Base64URL
+structure Base64URLPad
 
 instance : Multibase Base2 where
   code := '0'
   alpha := "01"
-  read
-  | '0' => some 0
-  | '1' => some 1
-  | _   => none
-  fix := false
+  digit := digitBase2
+  read := readBase2
+  rfc4648 := false
   pad := false
 
 instance : Multibase Base8 where
   code := '7'
   alpha: String := "01234567"
-  read : Char → Option Nat
-  | '0' => some 0
-  | '1' => some 1
-  | '2' => some 2
-  | '3' => some 3
-  | '4' => some 4
-  | '5' => some 5
-  | '6' => some 6
-  | '7' => some 7
-  | _ => none
-  fix := true
+  digit := digitBase8
+  read := readBase8
+  rfc4648 := true
   pad := false
 
 instance : Multibase Base10 where
   code := '9'
   alpha: String := "0123456789"
-  read : Char → Option Nat
-  | '0' => some 0
-  | '1' => some 1
-  | '2' => some 2
-  | '3' => some 3
-  | '4' => some 4
-  | '5' => some 5
-  | '6' => some 6
-  | '7' => some 7
-  | '8' => some 8
-  | '9' => some 9
-  | _ => none
-  fix := false
+  digit := digitBase10
+  read := readBase10
+  rfc4648 := false
   pad := false
 
 instance : Multibase Base16 where
   code := 'f'
   alpha: String := "0123456789abcdef"
-  read : Char → Option Nat
-  | '0' => some 0
-  | '1' => some 1
-  | '2' => some 2
-  | '3' => some 3
-  | '4' => some 4
-  | '5' => some 5
-  | '6' => some 6
-  | '7' => some 7
-  | '8' => some 8
-  | '9' => some 9
-  | 'a' => some 10
-  | 'b' => some 11
-  | 'c' => some 12
-  | 'd' => some 13
-  | 'e' => some 14
-  | 'f' => some 15
-  | 'A' => some 10
-  | 'B' => some 11
-  | 'C' => some 12
-  | 'D' => some 13
-  | 'E' => some 14
-  | 'F' => some 15
-  | _ => none
-  fix := false
+  digit := digitBase16
+  read := readBase16
+  rfc4648 := false
   pad := false
 
+instance : Multibase Base16Upper where
+  code := 'F'
+  alpha: String := "0123456789ABCDEF"
+  digit := digitBase16Upper
+  read := readBase16
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base32Hex where
+  code := 'v'
+  alpha: String := "0123456789abcdefghijklmnopqrstuv"
+  digit := digitBase32Hex
+  read := readBase32Hex
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32HexUpper where
+  code := 'V'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+  digit := digitBase32HexUpper
+  read := readBase32Hex
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32HexPad where
+  code := 't'
+  alpha: String := "0123456789abcdefghijklmnopqrstuv"
+  digit := digitBase32Hex
+  read := readBase32Hex
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32HexPadUpper where
+  code := 'T'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+  digit := digitBase32HexUpper
+  read := readBase32Hex
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32 where
+  code := 'b'
+  alpha: String := "abcdefghijklmnopqrstuvwxyz234567"
+  digit := digitBase32
+  read := readBase32
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32Upper where
+  code := 'B'
+  alpha: String := "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  digit := digitBase32Upper
+  read := readBase32
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32Pad where
+  code := 'c'
+  alpha: String := "abcdefghijklmnopqrstuvwxyz234567"
+  digit := digitBase32
+  read := readBase32
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32PadUpper where
+  code := 'C'
+  alpha: String := "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  digit := digitBase32Upper
+  read := readBase32
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32Z where
+  code := 'h'
+  alpha: String := "ybndrfg8ejkmcpqxot1uwisza345h769"
+  digit := digitBase32Z
+  read := readBase32Z
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base36 where
+  code := 'k'
+  alpha: String := "0123456789abcdefghijklmnopqrstuvwxyz"
+  digit := digitBase36
+  read := readBase36
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base36Upper where
+  code := 'K'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  digit := digitBase36Upper
+  read := readBase36
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base58Flickr where
+  code := 'Z'
+  alpha: String := 
+    "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+  digit := digitBase58Flickr
+  read := readBase58Flickr
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base58BTC where
+  code := 'z'
+  alpha: String := 
+    "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+  digit := digitBase58BTC
+  read := readBase58BTC
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base64 where
+  code := 'm'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  digit := digitBase64
+  read := readBase64
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base64Pad where
+  code := 'M'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  digit := digitBase64
+  read := readBase64
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base64URL where
+  code := 'u'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  digit := digitBase64URL
+  read := readBase64URL
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base64URLPad where
+  code := 'U'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  digit := digitBase64URL
+  read := readBase64URL
+  rfc4648 := true
+  pad := true
+
 namespace Test
+  open Multibase
+  #eval fromString Base8 (toString Base8 1)
+
+  #check (rfl : fromString Base8 (toString Base8 1) = some 1)
+  #check (rfl : fromString Base2 (toString Base2 1) = some 1)
+  #check (rfl : fromString Base10 (toString Base10 35) = some 35)
+  #check (rfl : toString Base10 <$> (fromString Base10 "35") = some "35")
+
+  -- basic.csv
   #eval "yes mani !".toUTF8
   def basic := ByteArray.mk #[121, 101, 115, 32, 109, 97, 110, 105, 32, 33]
   set_option maxRecDepth 1000
-  #check (rfl : (Multibase.encode Base2 basic) =
-  "001111001011001010111001100100000011011010110000101101110011010010010000000100001")
-  --#eval (Multibase.encode Base8 basic)
-  #check (rfl : (Multibase.encode Base8 basic) = "7362625631006654133464440102")
-  #check (rfl : (Multibase.encode Base10 basic) = "9573277761329450583662625")
-  #check (rfl : (Multibase.encode Base16 basic) = "f796573206d616e692021")
+  #check (rfl : (encode Base2             basic) = 
+    "001111001011001010111001100100000011011010110000101101110011010010010000000100001")
+  #check (rfl : (encode Base8             basic) = "7362625631006654133464440102")
+  #check (rfl : (encode Base10            basic) = "9573277761329450583662625")
+  #check (rfl : (encode Base16            basic) = "f796573206d616e692021")
+  #check (rfl : (encode Base16Upper       basic) = "F796573206D616E692021")
+  #check (rfl : (encode Base32Hex         basic) = "vf5in683dc5n6i811")
+  #check (rfl : (encode Base32HexUpper    basic) = "VF5IN683DC5N6I811")
+  #check (rfl : (encode Base32HexPad      basic) = "tf5in683dc5n6i811")
+  #check (rfl : (encode Base32HexPadUpper basic) = "TF5IN683DC5N6I811")
+  #check (rfl : (encode Base32            basic) = "bpfsxgidnmfxgsibb")
+  #check (rfl : (encode Base32Upper       basic) = "BPFSXGIDNMFXGSIBB")
+  #check (rfl : (encode Base32Pad         basic) = "cpfsxgidnmfxgsibb")
+  #check (rfl : (encode Base32PadUpper    basic) = "CPFSXGIDNMFXGSIBB")
+  #check (rfl : (encode Base32Z           basic) = "hxf1zgedpcfzg1ebb")
+  #check (rfl : (encode Base36            basic) = "k2lcpzo5yikidynfl")
+  #check (rfl : (encode Base36Upper       basic) = "K2LCPZO5YIKIDYNFL")
+  #check (rfl : (encode Base58Flickr      basic) = "Z7Pznk19XTTzBtx")
+  #check (rfl : (encode Base58BTC         basic) = "z7paNL19xttacUY")
+  #check (rfl : (encode Base64            basic) = "meWVzIG1hbmkgIQ")
+  #check (rfl : (encode Base64Pad         basic) = "MeWVzIG1hbmkgIQ==")
+  #check (rfl : (encode Base64URL         basic) = "ueWVzIG1hbmkgIQ")
+  #check (rfl : (encode Base64URLPad      basic) = "UeWVzIG1hbmkgIQ==")
+
+  -- RFC4648 Test Vectors: https://datatracker.ietf.org/doc/html/rfc4648#section-10
+  -- test vector `i` is the first `i` letters of the string "foobar" as UTF8
+  #eval "foobar".toUTF8
+  def rfc0 := ByteArray.mk #[]
+  def rfc1 := ByteArray.mk #[102]
+  def rfc2:= ByteArray.mk #[102, 111]
+  def rfc3 := ByteArray.mk #[102, 111, 111]
+  def rfc4 := ByteArray.mk #[102, 111, 111, 98]
+  def rfc5 := ByteArray.mk #[102, 111, 111, 98, 97]
+  def rfc6 := ByteArray.mk #[102, 111, 111, 98, 97, 114]
+
+  #check (rfl : encode Base16Upper rfc0 = "F")
+  #check (rfl : encode Base16Upper rfc1 = "F66")
+  #check (rfl : encode Base16Upper rfc2 = "F666F")
+  #check (rfl : encode Base16Upper rfc3 = "F666F6F")
+  #check (rfl : encode Base16Upper rfc4 = "F666F6F62")
+  #check (rfl : encode Base16Upper rfc5 = "F666F6F6261")
+  #check (rfl : encode Base16Upper rfc6 = "F666F6F626172")
+
+  #check (rfl : (encode Base32Hex         rfc0) = "v")
+  #check (rfl : (encode Base32Hex         rfc1) = "vco")
+  #check (rfl : (encode Base32Hex         rfc2) = "vcpng")
+  #check (rfl : (encode Base32Hex         rfc3) = "vcpnmu")
+  #check (rfl : (encode Base32Hex         rfc4) = "vcpnmuog")
+  #check (rfl : (encode Base32Hex         rfc5) = "vcpnmuoj1")
+  #check (rfl : (encode Base32Hex         rfc6) = "vcpnmuoj1e8")
+
+  #check (rfl : (encode Base32HexUpper    rfc0) = "V")
+  #check (rfl : (encode Base32HexUpper    rfc1) = "VCO")
+  #check (rfl : (encode Base32HexUpper    rfc2) = "VCPNG")
+  #check (rfl : (encode Base32HexUpper    rfc3) = "VCPNMU")
+  #check (rfl : (encode Base32HexUpper    rfc4) = "VCPNMUOG")
+  #check (rfl : (encode Base32HexUpper    rfc5) = "VCPNMUOJ1")
+  #check (rfl : (encode Base32HexUpper    rfc6) = "VCPNMUOJ1E8")
+
+  #check (rfl : (encode Base32HexPad      rfc0) = "t")
+  #check (rfl : (encode Base32HexPad      rfc1) = "tco======")
+  #check (rfl : (encode Base32HexPad      rfc2) = "tcpng====")
+  #check (rfl : (encode Base32HexPad      rfc3) = "tcpnmu===")
+  #check (rfl : (encode Base32HexPad      rfc4) = "tcpnmuog=")
+  #check (rfl : (encode Base32HexPad      rfc5) = "tcpnmuoj1")
+  #check (rfl : (encode Base32HexPad      rfc6) = "tcpnmuoj1e8======")
+
+  #check (rfl : (encode Base32HexPadUpper rfc0) = "T")
+  #check (rfl : (encode Base32HexPadUpper rfc1) = "TCO======")
+  #check (rfl : (encode Base32HexPadUpper rfc2) = "TCPNG====")
+  #check (rfl : (encode Base32HexPadUpper rfc3) = "TCPNMU===")
+  #check (rfl : (encode Base32HexPadUpper rfc4) = "TCPNMUOG=")
+  #check (rfl : (encode Base32HexPadUpper rfc5) = "TCPNMUOJ1")
+  #check (rfl : (encode Base32HexPadUpper rfc6) = "TCPNMUOJ1E8======")
+
+  #check (rfl : (encode Base32 rfc0) = "b")
+  #check (rfl : (encode Base32 rfc1) = "bmy")
+  #check (rfl : (encode Base32 rfc2) = "bmzxq")
+  #check (rfl : (encode Base32 rfc3) = "bmzxw6")
+  #check (rfl : (encode Base32 rfc4) = "bmzxw6yq")
+  #check (rfl : (encode Base32 rfc5) = "bmzxw6ytb")
+  #check (rfl : (encode Base32 rfc6) = "bmzxw6ytboi")
+
+  #check (rfl : (encode Base32Upper rfc0) = "B")
+  #check (rfl : (encode Base32Upper rfc1) = "BMY")
+  #check (rfl : (encode Base32Upper rfc2) = "BMZXQ")
+  #check (rfl : (encode Base32Upper rfc3) = "BMZXW6")
+  #check (rfl : (encode Base32Upper rfc4) = "BMZXW6YQ")
+  #check (rfl : (encode Base32Upper rfc5) = "BMZXW6YTB")
+  #check (rfl : (encode Base32Upper rfc6) = "BMZXW6YTBOI")
+
+  #check (rfl : (encode Base32Pad rfc0) = "c")
+  #check (rfl : (encode Base32Pad rfc1) = "cmy======")
+  #check (rfl : (encode Base32Pad rfc2) = "cmzxq====")
+  #check (rfl : (encode Base32Pad rfc3) = "cmzxw6===")
+  #check (rfl : (encode Base32Pad rfc4) = "cmzxw6yq=")
+  #check (rfl : (encode Base32Pad rfc5) = "cmzxw6ytb")
+  #check (rfl : (encode Base32Pad rfc6) = "cmzxw6ytboi======")
+
+  #check (rfl : (encode Base32PadUpper rfc0) = "C")
+  #check (rfl : (encode Base32PadUpper rfc1) = "CMY======")
+  #check (rfl : (encode Base32PadUpper rfc2) = "CMZXQ====")
+  #check (rfl : (encode Base32PadUpper rfc3) = "CMZXW6===")
+  #check (rfl : (encode Base32PadUpper rfc4) = "CMZXW6YQ=")
+  #check (rfl : (encode Base32PadUpper rfc5) = "CMZXW6YTB")
+  #check (rfl : (encode Base32PadUpper rfc6) = "CMZXW6YTBOI======")
+
+  #check (rfl : (encode Base64         rfc0) = "m")
+  #check (rfl : (encode Base64         rfc1) = "mZg")
+  #check (rfl : (encode Base64         rfc2) = "mZm8")
+  #check (rfl : (encode Base64         rfc3) = "mZm9v")
+  #check (rfl : (encode Base64         rfc4) = "mZm9vYg")
+  #check (rfl : (encode Base64         rfc5) = "mZm9vYmE")
+  #check (rfl : (encode Base64         rfc6) = "mZm9vYmFy")
+
+  #check (rfl : (encode Base64Pad      rfc0) = "M")
+  #check (rfl : (encode Base64Pad      rfc1) = "MZg==")
+  #check (rfl : (encode Base64Pad      rfc2) = "MZm8=")
+  #check (rfl : (encode Base64Pad      rfc3) = "MZm9v")
+  #check (rfl : (encode Base64Pad      rfc4) = "MZm9vYg==")
+  #check (rfl : (encode Base64Pad      rfc5) = "MZm9vYmE=")
+  #check (rfl : (encode Base64Pad      rfc6) = "MZm9vYmFy")
+
+  #check (rfl : (encode Base64URLPad         rfc0) = "U")
+  #check (rfl : (encode Base64URLPad         rfc1) = "UZg==")
+  #check (rfl : (encode Base64URLPad         rfc2) = "UZm8=")
+  #check (rfl : (encode Base64URLPad         rfc3) = "UZm9v")
+  #check (rfl : (encode Base64URLPad         rfc4) = "UZm9vYg==")
+  #check (rfl : (encode Base64URLPad         rfc5) = "UZm9vYmE=")
+  #check (rfl : (encode Base64URLPad         rfc6) = "UZm9vYmFy")
+
 end Test
-
-
---  namespace Test
---    private def base2ex1 : String := encode base2 ({ data := #[0x58, 0x59, 0x5a]})
---    #eval base2ex1 == "0010110000101100101011010"
---    private def base2ex2 : String := encode base2 ({ data := #[0x1a]})
---    #eval base2ex2 == "000011010"
---
---    private def base10ex1 : String := encode base10 ({ data := #[0x00, 0x01]})
---    #eval base10ex1 == "901"
---    private def base10ex2 : String := encode base10 ({ data := #[0x00, 0x00, 0xff]})
---    #eval base10ex2 == "900255"
---    private def base10ex3 : String := encode base10 ({ data := #[0x01, 0x00]})
---    #eval base10ex3 == "9256"
---    private def base10ex4 : String := encode base10 ({ data := #[0x00, 0x01, 0x00]})
---    #eval base10ex4 == "90256"
---
---    -- basic.csv
---    def basic : ByteArray := "yes mani !".toUTF8
---    #eval basic == ByteArray.mk #[0x79, 0x65, 0x73, 0x20, 0x6D, 0x61, 0x6E, 0x69, 0x20, 0x21]
---
---    #eval encode base2 basic == 
---      "001111001011001010111001100100000011011010110000101101110011010010010000000100001"
---    #eval encode base8 basic -- == "7362625631006654133464440102"
---
---    #eval encode base10            basic == "9573277761329450583662625"
---    #eval encode base16            basic == "f796573206d616e692021"
---    #eval encode base16upper       basic == "F796573206D616E692021"
---    #eval encode base32            basic == "bpfsxgidnmfxgsibb"
---    #eval encode base32upper       basic == "BPFSXGIDNMFXGSIBB"
---    #eval encode base32hex         basic == "vf5in683dc5n6i811"
---    #eval encode base32hexupper    basic == "VF5IN683DC5N6I811"
---    #eval encode base32pad         basic == "cpfsxgidnmfxgsibb"
---    #eval encode base32padupper    basic == "CPFSXGIDNMFXGSIBB"
---    #eval encode base32hexpad      basic == "tf5in683dc5n6i811"
---    #eval encode base32hexpadupper basic == "TF5IN683DC5N6I811"
---    #eval encode base32z           basic == "hxf1zgedpcfzg1ebb"
---    #eval encode base36            basic == "k2lcpzo5yikidynfl"
---    #eval encode base36upper       basic == "K2LCPZO5YIKIDYNFL"
---    #eval encode base58flickr      basic == "Z7Pznk19XTTzBtx"
---    #eval encode base58btc         basic == "z7paNL19xttacUY"
---    #eval encode base64            basic == "meWVzIG1hbmkgIQ"
---    #eval encode base64pad         basic == "MeWVzIG1hbmkgIQ=="
---    #eval encode base64url         basic == "ueWVzIG1hbmkgIQ"
---    #eval encode base64urlpad      basic == "UeWVzIG1hbmkgIQ=="
---
---    #eval "MA".toUTF8
---    #eval encode base64 {data := #[0x4d, 0x61, 0x00] }
---    #eval Nat.fromByteArrayBE "MA".toUTF8
---    #eval encode base64 "Man".toUTF8
---    #eval encode base64 "yes".toUTF8
---    #eval encode base64 "A".toUTF8 == "mQQ"
---    #eval encode base64 "AA".toUTF8 == "mQUE"
---    #eval encode base64 "AAA".toUTF8 == "mQUFB"
---
----- RFC4648 Test Vectors: https://datatracker.ietf.org/doc/html/rfc4648#section-10
---    #eval encode base64pad "".toUTF8       == ""
---    #eval encode base64pad "f".toUTF8      == "MZg=="
---    #eval encode base64pad "fo".toUTF8     == "MZm8g="
---    #eval encode base64pad "foo".toUTF8    == "MZm9v"
---    #eval encode base64pad "foob".toUTF8   == "MZm9vYg=="
---    #eval encode base64pad "fooba".toUTF8  == "MZm9vYmE="
---    #eval encode base64pad "foobar".toUTF8 == "MZm9vYmFy"
---
---    #eval encode base32padupper "".toUTF8       == ""
---    #eval encode base32padupper "f".toUTF8      == "CMY======"
---    #eval encode base32padupper "fo".toUTF8     == "CMZXQ===="
---    #eval encode base32padupper "foo".toUTF8    == "CMZXW6==="
---    #eval encode base32padupper "foob".toUTF8   == "CMZXW6YQ="
---    #eval encode base32padupper "fooba".toUTF8  == "CMZXW6YTB"
---    #eval encode base32padupper "foobar".toUTF8 == "CMZXW6YTBOI======"
---
---    #eval encode base32hexpadupper "".toUTF8       == ""
---    #eval encode base32hexpadupper "f".toUTF8      == "TCO======"
---    #eval encode base32hexpadupper "fo".toUTF8     == "TCPNG===="
---    #eval encode base32hexpadupper "foo".toUTF8    == "TCPNMU==="
---    #eval encode base32hexpadupper "foob".toUTF8   == "TCPNMUOG="
---    #eval encode base32hexpadupper "fooba".toUTF8  == "TCPNMUOJ1"
---    #eval encode base32hexpadupper "fooba".toUTF8  == "TCPNMUOJ1"
---    #eval encode base32hexpadupper "foobar".toUTF8 == "TCPNMUOJ1E8======"
---
---    #eval encode base16upper "".toUTF8       == ""
---    #eval encode base16upper "f".toUTF8      == "F66"
---    #eval encode base16upper "fo".toUTF8     == "F666F"
---    #eval encode base16upper "foo".toUTF8    == "F666F6F"
---    #eval encode base16upper "foob".toUTF8   == "F666F6F62"
---    #eval encode base16upper "fooba".toUTF8  == "F666F6F6261"
---    #eval encode base16upper "foobar".toUTF8 == "F666F6F626172"
---
---    #eval encode base16 "hello world".toUTF8 == "f68656c6c6f20776f726c64"
---    #eval encode base16upper "hello world".toUTF8 == "F68656C6C6F20776F726C64"
---    #eval encode base32 "hello world".toUTF8 == "bnbswy3dpeb3w64tmmq"
---    #eval encode base32upper "hello world".toUTF8 -- == "F68656C6C6F20776F726C64"
---    #eval encode base36 "hello world".toUTF8 == "kfuvrsivvnfrbjwajo"
---
---    
-
-
