@@ -28,15 +28,18 @@
       lib = utils.lib.${system};
       pkgs = nixpkgs.legacyPackages.${system};
       leanPkgs = lean.packages.${system};
+      Blake3 = lean-blake3.project.${system};
+      Neptune = lean-neptune.project.${system};
       Ipld = leanPkgs.buildLeanPackage {
-        src = ./src;
+        src = ./.;
         name = "Ipld";
-        deps = [ lean-blake3.project.${system} lean-neptune.project.${system} ];
+        deps = [ Blake3 Neptune ];
       };
+      joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ (builtins.attrValues Ipld.allExternalDeps)));
     in
     {
       project = Ipld;
-      packages = {
+      packages = Ipld // {
         "Ipld" = Ipld.executable;
       };
 
@@ -44,11 +47,12 @@
 
       # `nix develop`
       devShell = pkgs.mkShell {
-        inputsFrom = builtins.attrValues self.packages.${system};
+        inputsFrom = [ Ipld.executable ];
         buildInputs = with pkgs; [
           leanPkgs.lean
         ];
-        LEAN_PATH = "${leanPkgs.Lean.modRoot}";
+        LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
+        LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
       };
     });
 }
