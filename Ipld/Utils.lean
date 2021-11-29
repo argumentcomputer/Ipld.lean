@@ -18,6 +18,17 @@ namespace Nat
       bytes' := bytes'.push (bytes.data[bytes.size - 1 - i])
     bytes'
 
+  def toByteListCore : Nat → Nat → List UInt8 → List UInt8
+  | 0, n, bytes => bytes
+  | fuel+1, n, bytes =>
+      let b: UInt8 := UInt8.ofNat (n % 256);
+      let n' := n / 256;
+      if n' = 0 then (bytes.cons b)
+      else toByteListCore fuel n' (bytes.cons b)
+
+  def toByteListBE (n: Nat) : List UInt8 := do
+    toByteListCore (n+1) n []
+
   def lenBytes (n : Nat) : Nat := n.toByteArrayLE.size
 
   def fromByteArrayLE (b: ByteArray) : Nat := do
@@ -31,6 +42,19 @@ namespace Nat
     for i in [:b.size] do
       x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
     return x
+
+  def fromByteListCore: Nat → List UInt8 → Nat → Nat
+  | 0, bytes, n => n
+  | fuel+1, [], n => n
+  | fuel+1, b::bs, n => 
+    fromByteListCore fuel bs (Nat.shiftLeft n 8 + (UInt8.toNat b))
+
+  def fromByteListBE (b : List UInt8) : Nat :=
+    fromByteListCore (b.length + 1) b 0
+
+  #eval toByteListBE 1242938423
+  #eval fromByteListBE [74, 21, 188, 55]
+  #eval toByteArrayBE 1242938423
 
   def sigBitsCore: Nat → Nat → Nat → Nat
   | 0, acc, n  => acc
@@ -61,6 +85,9 @@ def pushZeros (bytes: ByteArray): Nat → ByteArray
 | n+1 => pushZeros (bytes.push 0) n
 
 end ByteArray
+
+
+
 
 
 
