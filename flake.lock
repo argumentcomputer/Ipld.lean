@@ -23,11 +23,11 @@
     },
     "flake-utils": {
       "locked": {
-        "lastModified": 1637014545,
-        "narHash": "sha256-26IZAc5yzlD9FlDT54io1oqG/bBoyka+FJk5guaX4x4=",
+        "lastModified": 1638122382,
+        "narHash": "sha256-sQzZzAbvKEqN9s0bzWuYmRaA03v40gaJ4+iL1LXjaeI=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "bba5dcc8e0b20ab664967ad83d24d64cb64ec4f4",
+        "rev": "74f7e4319258e287b0f9cb95426c9853b282730b",
         "type": "github"
       },
       "original": {
@@ -181,16 +181,15 @@
         "temci": "temci"
       },
       "locked": {
-        "lastModified": 1637702749,
-        "narHash": "sha256-JeweNdjNYDUusEIm1bjWvTX4PygbWJNu5iZ6VJCNbOQ=",
-        "owner": "yatima-inc",
+        "lastModified": 1638209175,
+        "narHash": "sha256-5wFNdlqZf3ORuCZL/3IPEkRdjg5Il2RT64TKkyleKXg=",
+        "owner": "leanprover",
         "repo": "lean4",
-        "rev": "f288e5eb048e4630cda235f9398efa71452efb2c",
+        "rev": "07649677574f0995a71779ce4ff4a0cc6d298d98",
         "type": "github"
       },
       "original": {
-        "owner": "yatima-inc",
-        "ref": "acs/add-nix-ability-for-native-libs",
+        "owner": "leanprover",
         "repo": "lean4",
         "type": "github"
       }
@@ -203,11 +202,11 @@
         "nixpkgs": "nixpkgs_6"
       },
       "locked": {
-        "lastModified": 1636574461,
-        "narHash": "sha256-Iz2LMG84a7+D8Vsx/h6JgajkBLEPBJ+2kgWNz+W4xdA=",
+        "lastModified": 1638204056,
+        "narHash": "sha256-hEvYG9pYePWShKdGE/dYhxOPNmDiuoWnpG8hxwhcsbM=",
         "owner": "yatima-inc",
         "repo": "lean-blake3",
-        "rev": "53ae067f1f8c7df253cabac81d3da3e1626b8984",
+        "rev": "5ecb407f02cd3283800dc73d2baac7017c05edaf",
         "type": "github"
       },
       "original": {
@@ -292,16 +291,15 @@
         "temci": "temci_2"
       },
       "locked": {
-        "lastModified": 1636562722,
-        "narHash": "sha256-JkdbXvhTcO5swfwNbu3AzlROpR20GSGw99JR5gKrMO8=",
-        "owner": "yatima-inc",
+        "lastModified": 1638118561,
+        "narHash": "sha256-LPBvEwsLA1FuEC3SJnG6+kMbQkqh8/B2YgqLvXho6Rk=",
+        "owner": "leanprover",
         "repo": "lean4",
-        "rev": "1b61d7bb4b9fcb6eb1596bd580641fc52494b107",
+        "rev": "cfe924e53e38e98e0debd248b503a465cbd07bd5",
         "type": "github"
       },
       "original": {
-        "owner": "yatima-inc",
-        "ref": "acs/add-nix-ability-for-native-libs",
+        "owner": "leanprover",
         "repo": "lean4",
         "type": "github"
       }
@@ -604,11 +602,11 @@
     },
     "nixpkgs_11": {
       "locked": {
-        "lastModified": 1637448181,
-        "narHash": "sha256-ujcXli4esmtIHUBjE1BjmMuBWrcNvlHZrVXx56i5B1M=",
+        "lastModified": 1638196344,
+        "narHash": "sha256-fkOqSkfOkl8tqxDd+zJU4kAgyLXp/ouaP+U9gpjEZZs=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "d5b65f812cd4f5a8fa74b406075b59a46f1cfd98",
+        "rev": "2553aee74fed8c2205a4aeb3ffd206ca14ede60f",
         "type": "github"
       },
       "original": {
@@ -879,11 +877,11 @@
         "nixpkgs": "nixpkgs_12"
       },
       "locked": {
-        "lastModified": 1637525623,
-        "narHash": "sha256-qAdhE7TKlY9YScGeOSawpQuAmHF4jX5paRd6n3tPjh8=",
+        "lastModified": 1638203050,
+        "narHash": "sha256-emmf5jyakPfPAvOAzmfHalycDePl0MZV0eRI1v2udbM=",
         "owner": "yatima-inc",
         "repo": "nix-utils",
-        "rev": "bc42e4b9257f8c2628d3f7bd84ae4a8446fc6ea6",
+        "rev": "2542543b2f28810ed6cf91d4e8615995c84166d3",
         "type": "github"
       },
       "original": {

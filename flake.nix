@@ -3,7 +3,7 @@
     utils.url = "github:yatima-inc/nix-utils";
     nixpkgs.url = github:nixos/nixpkgs/nixos-21.05;
     lean = {
-      url = github:yatima-inc/lean4/acs/add-nix-ability-for-native-libs;
+      url = github:leanprover/lean4;
     };
     lean-blake3.url = github:yatima-inc/lean-blake3;
     lean-neptune.url = github:yatima-inc/lean-neptune;
@@ -35,7 +35,7 @@
         name = "Ipld";
         deps = [ Blake3 Neptune ];
       };
-      joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ (builtins.attrValues Ipld.allExternalDeps)));
+      joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ Ipld.allExternalDeps));
     in
     {
       project = Ipld;
