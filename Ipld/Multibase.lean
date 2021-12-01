@@ -1,5 +1,6 @@
 import Ipld.Multibase.Class
 
+/-- Different bases supported by the Multibase spec -/
 inductive Base
 | base2
 | base8
@@ -25,6 +26,7 @@ inductive Base
 | base64urlpad
 
 
+/-- Top level multibase encoding function -/
 def encode (b: Base) (x: ByteArray) : String :=
   match b with
   | Base.base2            => Multibase.encode Base2 x.data.data
@@ -50,6 +52,7 @@ def encode (b: Base) (x: ByteArray) : String :=
   | Base.base64url        => Multibase.encode Base64URL x.data.data
   | Base.base64urlpad     => Multibase.encode Base64URLPad x.data.data
 
+/-- Top level multibase decoding function -/
 def decode (b: Base) (x: String) : Option ByteArray :=
   match b with
   | Base.base2            => ByteArray.mk <$> Array.mk <$> Multibase.decode Base2 x
