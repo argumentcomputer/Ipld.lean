@@ -43,7 +43,7 @@
       Ipld = leanPkgs.buildLeanPackage {
         src = ./.;
         name = "Ipld";
-        deps = [ Blake3 Neptune ];
+        deps = [ Blake3 ];
       };
       joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ Ipld.allExternalDeps));
     in
