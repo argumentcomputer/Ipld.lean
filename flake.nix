@@ -5,8 +5,18 @@
     lean = {
       url = github:leanprover/lean4;
     };
-    lean-blake3.url = github:yatima-inc/lean-blake3;
-    lean-neptune.url = github:yatima-inc/lean-neptune;
+    lean-blake3 = {
+      url = github:yatima-inc/lean-blake3;
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.lean.follows = "lean";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+    lean-neptune = {
+      url = github:yatima-inc/lean-neptune;
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.lean.follows = "lean";
+      inputs.flake-utils.follows = "flake-utils";
+    };
 
     flake-utils = {
       url = github:numtide/flake-utils;
