@@ -1,438 +1,388 @@
-import Ipld.UnsignedVarint
+import Ipld.Utils
+import Ipld.Multibase.Impl
 
-inductive Multibase
---| identity
-| base2
-| base8
-| base10
-| base16
-| base16upper
-| base32hex
-| base32hexupper
-| base32hexpad
-| base32hexpadupper
-| base32
-| base32upper
-| base32pad
-| base32padupper
-| base32z
-| base36
-| base36upper
-| base58btc
-| base58flickr
-| base64
-| base64pad
-| base64url
-| base64urlpad
---| proquint
+/-- An instance of the Multibase specification for a given base `β` -/
+class Multibase (β: Type) where
+  code         : Char
+  alpha        : String
+  digit        : Nat → Char
+  read         : Char → Option Nat
+  rfc4648      : Bool
+  pad          : Bool
 
 namespace Multibase
+-- We define associated functions derived from the class in the same namespace
+-- Ideally there would be a way to make `β` implicit and inferrable
+variable (β: Type)
+def zero [Multibase β]: Char := (alpha β)[0]
+def base [Multibase β]: Nat  := (alpha β).length
+def log2Base [Multibase β]: Nat  := Nat.log2' (base β)
 
-def toCode : Multibase → Char 
---| identity => '\x00'
-| base2 => '0'
-| base8 => '7'
-| base10 => '9'
-| base16 => 'f'
-| base16upper => 'F'
-| base32hex => 'v'
-| base32hexupper => 'V'
-| base32hexpad => 't'
-| base32hexpadupper => 'T'
-| base32 => 'b'
-| base32upper => 'B'
-| base32pad => 'c'
-| base32padupper => 'C'
-| base32z => 'h'
-| base36 => 'k'
-| base36upper => 'K'
-| base58btc => 'z'
-| base58flickr => 'Z'
-| base64 => 'm'
-| base64pad => 'M'
-| base64url => 'u'
-| base64urlpad => 'U'
---| proquint => 'p'
+-- Every RFC4648 base has a group size which is least-common-multiple of the
+-- number of bits per digit of the base (`log2Base`) and 8 (the number of bits
+-- per byte). This function returns the size of the group in bits.
+def group [Multibase β] : Nat :=
+  let x := (log2Base β)
+  if x % 8 == 0 then x else
+  if x % 4 == 0 then x * 2 else
+  if x % 2 == 0 then x * 4 else
+  x * 8
 
-def fromCode : Char -> Option Multibase
---| '\x00' => Option.some identity 
-| '0' => Option.some base2 
-| '7' => Option.some base8 
-| '9' => Option.some base10 
-| 'f' => Option.some base16 
-| 'F' => Option.some base16upper 
-| 'v' => Option.some base32hex 
-| 'V' => Option.some base32hexupper 
-| 't' => Option.some base32hexpad 
-| 'T' => Option.some base32hexpadupper 
-| 'b' => Option.some base32 
-| 'B' => Option.some base32upper 
-| 'c' => Option.some base32pad 
-| 'C' => Option.some base32padupper 
-| 'h' => Option.some base32z 
-| 'k' => Option.some base36 
-| 'K' => Option.some base36upper 
-| 'z' => Option.some base58btc 
-| 'Z' => Option.some base58flickr 
-| 'm' => Option.some base64 
-| 'M' => Option.some base64pad 
-| 'u' => Option.some base64url 
-| 'U' => Option.some base64urlpad 
---| 'p' => Option.some proquint 
-| _ => Option.none
+-- This is a little slow. We gain some in-kernel performance by
+-- requiring Multibase instances to hardcode a `digit` function, even though
+-- semantically it's derivable from `alpha`
+def digit' [Multibase β] (i : Nat): Char :=
+  if i >= (alpha β).length then zero β else String.get (alpha β) i
 
-  namespace Alphabet
-    def base2: String := "01"
-    def base8: String := "01234567"
-    def base10: String := "0123456789"
-    def base16: String := "0123456789abcdef"
-    def base16upper: String := "0123456789ABCDEF"
-    def base32: String := "abcdefghijklmnopqrstuvwxyz234567"
-    def base32upper: String := "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-    def base32hex : String := "0123456789abcdefghijklmnopqrstuv"
-    def base32hexupper : String := "0123456789ABCDEFGHIJKLMNOPQRSTUV"
-    def base32z : String := "ybndrfg8ejkmcpqxot1uwisza345h769"
-    def base36 : String := "0123456789abcdefghijklmnopqrstuvwxyz"
-    def base36upper : String := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    def base58flickr : String := 
-      "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
-    def base58btc : String := 
-      "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-    def base64 : String := 
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    def base64url : String := 
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+-- This is very slow because of the String.posOf call. We can't reduce
+-- encodings in-kernel unless we hardcode the `read` function in the instance
+def read' [Multibase β] (c: Char): Option Nat :=
+ let x := String.posOf (alpha β) c
+ if x == (alpha β).length then Option.none else Option.some x
 
-  end Alphabet
+def validDigit [Multibase β] (x: Char): Bool := (read β x) != Option.none
+def validate [Multibase β] (x: String): Bool := List.all x.data (validDigit β)
 
-def alphabet : Multibase → String
-| base2 => Alphabet.base2
-| base8 => Alphabet.base8
-| base10 => Alphabet.base10
-| base16 => Alphabet.base16
-| base16upper => Alphabet.base16upper
-| base32hex => Alphabet.base32hex
-| base32hexupper => Alphabet.base32hexupper
-| base32hexpad => Alphabet.base32hex
-| base32hexpadupper => Alphabet.base32hexupper
-| base32 => Alphabet.base32
-| base32upper => Alphabet.base32upper
-| base32pad => Alphabet.base32
-| base32padupper => Alphabet.base32upper
-| base32z => Alphabet.base32z
-| base36 => Alphabet.base36
-| base36upper => Alphabet.base36upper
-| base58btc => Alphabet.base58btc
-| base58flickr => Alphabet.base58flickr
-| base64 => Alphabet.base64
-| base64pad => Alphabet.base64
-| base64url => Alphabet.base64url
-| base64urlpad => Alphabet.base64url
+-- The core encoding function operates over `Nat` (GMP numbers) which is
+-- supported in the Lean Kernel, thus allowing more complex static checking
+-- compared to ByteArray operations (which are currently unsupported).,
+def toStringCore [Multibase β]: Nat → Nat → String → String
+| 0, n, str => str
+| fuel+1, 0, str => str
+| fuel+1, n, str =>
+  let dig := (digit β (n % (base β)))
+  toStringCore fuel (n / (base β)) (String.append (String.singleton dig) str)
 
-def encodeCore (alpha : String) : Nat → Nat → String → String
-| 0, n, string => string
-| fuel+1, n, string =>
-    let base := alpha.length
-    let char: String := String.singleton $ alpha.get (n % base);
-    let n' := n / base;
-    if n' = 0 then (String.append char string)
-    else encodeCore alpha fuel n' (String.append char string)
+def toString [m: Multibase β] (x: List UInt8): String :=
+  match Nat.fromByteListBE x with
+  | 0 => ""
+  | n => toStringCore β (n+1) n ""
 
-def encodeBase64 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
-  let x := ByteArray.size input % 3
-  let mut bytes := input
-  let mut str := ""
-  if x == 1 then bytes := bytes.append [0x00, 0x00].toByteArray
-  if x == 2 then bytes := bytes.append [0x00].toByteArray
-  for i in [:(bytes.size / 3)] do
-    let b0 := bytes.data[3 * i]
-    let b1 := bytes.data[3 * i + 1]
-    let b2 := bytes.data[3 * i + 2]
-    let s0 := b0.shiftRight 2
-    let s1 := UInt8.xor
-      ((b0.land 0b00000011).shiftLeft 4) 
-      ((b1.land 0b11110000).shiftRight 4)
-    let s2 := UInt8.xor
-      ((b1.land 0b00001111).shiftLeft 2) 
-      ((b2.land 0b11000000).shiftRight 6)
-    let s3 := b2.land 0b00111111
-    str := str.push (alpha.get s0.toNat)
-    str := str.push (alpha.get s1.toNat)
-    str := str.push (alpha.get s2.toNat)
-    str := str.push (alpha.get s3.toNat)
-  if pad then do
-    if x == 1 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-    if x == 2 then 
-      str := str.set (str.length - 1) '='
-    return str
-  else 
-    if x == 1 then str := str.dropRight 2
-    if x == 2 then str := str.dropRight 1
-    return str
+def padRight (input: String): Nat → String
+| 0 => input
+| n+1 => padRight (String.push input '=') n
 
-def encodeBase32 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
-  let x := ByteArray.size input % 5
-  let mut bytes := input
-  let mut str := ""
-  if x == 1 then bytes := bytes.append [0x00, 0x00, 0x00, 0x00].toByteArray
-  if x == 2 then bytes := bytes.append [0x00, 0x00, 0x00].toByteArray
-  if x == 3 then bytes := bytes.append [0x00, 0x00].toByteArray
-  if x == 4 then bytes := bytes.append [0x00].toByteArray
-  for i in [:(bytes.size / 5)] do
-    let b0 := bytes.data[5 * i]
-    let b1 := bytes.data[5 * i + 1]
-    let b2 := bytes.data[5 * i + 2]
-    let b3 := bytes.data[5 * i + 3]
-    let b4 := bytes.data[5 * i + 4]
-    -- b0        b1        b2        b3        b4
-    -- 0000.0000 0000.0000 0000.0000 0000.0000 0000.0000
-    -- 0000.0111 1122.2223 3333.4444 4555.5566 6667.7777
-    -- s0    s1    s2    s3     s4    s5    s6    s7
-    let s0 := b0.shiftRight 3
-    let s1 := UInt8.xor
-      ((b0.land 0b00000111).shiftLeft 2) 
-      ((b1.land 0b11000000).shiftRight 6)
-    let s2 := (b1.land 0b00111110).shiftRight 1
-    let s3 := UInt8.xor
-      ((b1.land 0b00000001).shiftLeft 4) 
-      ((b2.land 0b11110000).shiftRight 4)
-    let s4 := UInt8.xor
-      ((b2.land 0b00001111).shiftLeft 1) 
-      ((b3.land 0b10000000).shiftRight 7)
-    let s5 := (b3.land 0b01111100).shiftRight 2
-    let s6 := UInt8.xor
-      ((b3.land 0b00000011).shiftLeft 3) 
-      ((b4.land 0b11100000).shiftRight 5)
-    let s7 := b4.land 0b00011111
-    str := str.push (alpha.get s0.toNat)
-    str := str.push (alpha.get s1.toNat)
-    str := str.push (alpha.get s2.toNat)
-    str := str.push (alpha.get s3.toNat)
-    str := str.push (alpha.get s4.toNat)
-    str := str.push (alpha.get s5.toNat)
-    str := str.push (alpha.get s6.toNat)
-    str := str.push (alpha.get s7.toNat)
-  if pad then do
-    if x == 1 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-      str := str.set (str.length - 3) '='
-      str := str.set (str.length - 4) '='
-      str := str.set (str.length - 5) '='
-      str := str.set (str.length - 6) '='
-    if x == 2 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-      str := str.set (str.length - 3) '='
-      str := str.set (str.length - 4) '='
-    if x == 3 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-      str := str.set (str.length - 3) '='
-    if x == 4 then 
-      str := str.set (str.length - 1) '='
-    return str
-  else 
-    if x == 1 then str := str.dropRight 6
-    if x == 2 then str := str.dropRight 4
-    if x == 3 then str := str.dropRight 3
-    if x == 4 then str := str.dropRight 1
-    return str
+def leadingZeroBitsCore: Nat → List UInt8 → Nat → Nat
+| 0, bytes, n => n
+| fuel+1, [], n => n
+| fuel+1, 0::bs, n => leadingZeroBitsCore fuel bs (n + 8)
+| fuel+1, b::bs, n => n + (8 - Nat.sigBits (UInt8.toNat b))
 
-def encodeBase8 (pad: Bool) (alpha: String) (input : ByteArray) : String := do
-  let x := ByteArray.size input % 3
-  let mut bytes := input
-  let mut str := ""
-  if x == 1 then bytes := bytes.append [0x00, 0x00].toByteArray
-  if x == 2 then bytes := bytes.append [0x00].toByteArray
-  for i in [:(bytes.size / 3)] do
-    let b0 := bytes.data[3 * i]
-    let b1 := bytes.data[3 * i + 1]
-    let b2 := bytes.data[3 * i + 2]
-    let s0 := b0.shiftRight 5
-    let s1 := (b0.land 0b00011100).shiftRight 2
-    let s2 := UInt8.xor
-      ((b0.land 0b00000011).shiftLeft 1) 
-      ((b1.land 0b10000000).shiftRight 7)
-    let s3 := (b1.land 0b01110000).shiftRight 4
-    let s4 := (b1.land 0b00001110).shiftRight 1 
-    let s5 := UInt8.xor
-      ((b1.land 0b00000001).shiftLeft 2) 
-      ((b2.land 0b11000000).shiftRight 6)
-    let s6 := (b2.land 0b00111000).shiftRight 3
-    let s7 := (b2.land 0b00000111)
-    str := str.push (alpha.get s0.toNat)
-    str := str.push (alpha.get s1.toNat)
-    str := str.push (alpha.get s2.toNat)
-    str := str.push (alpha.get s3.toNat)
-    str := str.push (alpha.get s4.toNat)
-    str := str.push (alpha.get s5.toNat)
-    str := str.push (alpha.get s6.toNat)
-    str := str.push (alpha.get s7.toNat)
-  if pad then do
-    if x == 1 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-      str := str.set (str.length - 3) '='
-      str := str.set (str.length - 4) '='
-      str := str.set (str.length - 5) '='
-    if x == 2 then 
-      str := str.set (str.length - 1) '='
-      str := str.set (str.length - 2) '='
-    return str
-  else 
-    if x == 1 then str := str.dropRight 5
-    if x == 2 then str := str.dropRight 2
-    return str
+def leadingZeroBits (bytes: List UInt8) : Nat := do
+  leadingZeroBitsCore (bytes.length) bytes 0
 
---def decodeBase64 (input: String) : ByteArray := do
---  let mut str := input
---  let mut bytes := ByteArray.empty
---  bytes
+def encode [Multibase β] (x: List UInt8): String :=
+  let log := log2Base β                        -- number of bits per digit
+  let lzs := leadingZeroBits x                 -- count leading zero bits
+  let rfc := rfc4648 β                         -- RFC4648 conformance
+  let zeros := String.mk $ if rfc              -- if in RFC4648
+    then List.replicate (lzs / log) (zero β)   -- left zeros are normal digits
+    else List.replicate (lzs / 8) (zero β)     -- else, they count whole bytes
+  let grp := group β / 8                       -- RFC group size in bytes
+  let bytePad := (grp - x.length % grp) % grp  -- for counting right pad bytes
+  let x := if rfc                              -- in RFC4648,
+    then x ++ List.replicate bytePad 0         -- push right zero byte pad
+    else x                                     -- else, do nothing
+  let n := Nat.fromByteListBE x                -- convert bytes to big number
+  let str := (toStringCore β (n+1) n "")       -- core conversion loop
+  let charPad := ((bytePad * 8) / log)         -- the pad size in characters
+  let str' := if rfc                           -- in RFC4648
+    then str.dropRight charPad                 -- drop the character pad size
+    else str                                   -- else, do nothing
+  let str' := if rfc && pad β                  -- in RFC4648 with explicit pad
+    then padRight str' charPad                 -- add back the pad characters
+    else str'                                  -- else, do nothing
+  String.singleton (code β) ++ zeros ++ str'   -- return w/ base code & zeros
 
-def pad32 (input : String) : String :=
-  let pad := (List.replicate ((8 - (input.length % 8)) % 8) '=').asString
-  input.append pad
+def fromPad [Multibase β]: Nat → Nat → Nat → String → Option (Nat × Nat)
+| 0, pad, acc, input => Option.some (pad, acc)
+| fuel+1, pad, acc, "" => Option.some (pad, acc)
+| fuel+1, pad, acc, input => do
+  if (input[0] == '=')
+  then fromPad fuel (pad+1) (acc * (base β)) (String.drop input 1)
+  else Option.none
 
-def padBin (input : String) : String :=
-  let pad := (List.replicate ((8 - (input.length % 8)) % 8) '0').asString
-  pad.append input
+def fromStringCore [Multibase β]: Nat → Nat → String → Option (Nat × Nat)
+| 0, acc, input => Option.some (0, acc)
+| fuel+1, acc, "" => Option.some (0, acc)
+| fuel+1, acc, input => do
+let c := input[0]
+if some c == '='
+then (fromPad β (fuel+1) 0 acc input)
+else Option.bind (read β input[0]) (fun d =>
+  fromStringCore fuel (acc * (base β) + d) (String.drop input 1))
 
-def countZeros (input : ByteArray) : Nat := 
-  (List.takeWhile (fun x => x.toNat == 0) input.data.data).length
+def fromString [m: Multibase β]: String → Option (List UInt8)
+| "" => some []
+| s  => (fun (x,y) => Nat.toByteListBE y) <$>
+  (fromStringCore β (s.length) 0 s)
 
-def padZeros (alpha: String) (n: Nat) (input : String) : String := {data := List.replicate n alpha[0]} ++ input
+def readCode [m: Multibase β]: String → Option String
+| ⟨c::cs⟩ => if c == code β
+  then some (String.mk cs)
+  else none
+| _ => none
 
--- Todo: left zeros, base8, String <-> ByteArray
-def encode (base: Multibase) (input : ByteArray) : String :=
-  if input == ByteArray.empty then return "" else
-  let x := Nat.fromByteArrayBE input
-  let zs := countZeros input
-  let code := String.singleton base.toCode
-  let alphabet := base.alphabet
-  let core := encodeCore alphabet (x+1) x ""
-  String.append code $ 
-  match base with
-  | base2 => padBin core
-  | base8 => encodeBase8 false Alphabet.base8 input
-  | base10 => padZeros alphabet zs $ core
-  | base16 => core
-  | base16upper => core
-  | base32hex => encodeBase32 false Alphabet.base32hex input
-  | base32hexupper => encodeBase32 false Alphabet.base32hexupper input
-  | base32hexpad => encodeBase32 true Alphabet.base32hex input
-  | base32hexpadupper => encodeBase32 true Alphabet.base32hexupper input
-  | base32 => encodeBase32 false Alphabet.base32 input
-  | base32upper => encodeBase32 false Alphabet.base32upper input
-  | base32pad => encodeBase32 true Alphabet.base32 input
-  | base32padupper => encodeBase32 true Alphabet.base32upper input
-  | base32z => core
-  | base36 => core
-  | base36upper => core
-  | base58btc => core
-  | base58flickr => core
-  | base64 => encodeBase64 false Alphabet.base64 input
-  | base64pad => encodeBase64 true Alphabet.base64 input
-  | base64url => encodeBase64 false Alphabet.base64url input
-  | base64urlpad => encodeBase64 true Alphabet.base64url input
+def readZeros [m: Multibase β]: List Char → Nat
+| c::cs => if c == zero β
+  then 1 + readZeros cs
+  else 0
+| _ => 0
 
-  namespace Test
-    private def base2ex1 : String := encode base2 ({ data := #[0x58, 0x59, 0x5a]})
-    #eval base2ex1 == "0010110000101100101011010"
-    private def base2ex2 : String := encode base2 ({ data := #[0x1a]})
-    #eval base2ex2 == "000011010"
+def decode [Multibase β] (input: String): Option (List UInt8) :=
+  Option.bind (readCode β input) $ fun x =>
+  let len := x.length
+  let zeroChars := readZeros β x.data
+  let log := log2Base β
+  let x := if rfc4648 β
+    then
+      -- Every rfc4648 base has a "group", e.g. 5 bytes or 40 bits for Base32
+      -- which is is the least common multiple of 8 and the bits per base char
+      -- This is so the characters and bytes line up evenly, and padding is
+      -- introduced when there are insufficient input bits to fill a group.
+      let grp     := group β                   -- bits per group
+      let chars   := grp / log                 -- chars per group
+      let inBits  := len * log                 -- bits in input
+      let remBits := inBits % grp              -- excess input bits
+      let pad     := (grp - remBits) / log     -- chars to fill a group
+      let pad     := pad % chars               -- but don't fill an extra one
+      padRight x pad
+    else x
+  if x = ""
+  then Option.some []
+  else Option.bind (fromStringCore β (x.length) 0 x) $ fun (padLen, x') =>
+  let out    := Nat.toByteListBE x'
+  let len    := if pad β then len else len + padLen
+  let zeros := if rfc4648 β
+    -- In RFC4648, leading zero chars correspond to log2Base β leading bits.
+    -- Since the leading significant byte can contain leading zeros bits
+    -- we have to check if the bits of the zeroChars and the decoded bytes
+    -- don't have enough bits to cover the size of the input
+    then if len * log > out.length * 8 + zeroChars * log
+      then (zeroChars * log) / 8 + 1
+      else (zeroChars * log) / 8
+    -- outside of RFC4648, then a leading zero char *is* a leading zero byte
+    else zeroChars
+  let padBytes := if ((padLen * log) % 8) == 0
+    then padLen * log / 8
+    else ((padLen * log) / 8) + 1
+  --let x''    := Nat.toByteListBE x'
+  let zeros : List UInt8 := List.replicate zeros 0
+  some (zeros ++ (List.take (out.length - padBytes) out))
+  --s!"{len * log}, {Nat.log2' x'}, {zeroChars}, {zeros}, {(zeroChars' ++ (List.take (out.length - padBytes) out))}"
 
-    private def base10ex1 : String := encode base10 ({ data := #[0x00, 0x01]})
-    #eval base10ex1 == "901"
-    private def base10ex2 : String := encode base10 ({ data := #[0x00, 0x00, 0xff]})
-    #eval base10ex2 == "900255"
-    private def base10ex3 : String := encode base10 ({ data := #[0x01, 0x00]})
-    #eval base10ex3 == "9256"
-    private def base10ex4 : String := encode base10 ({ data := #[0x00, 0x01, 0x00]})
-    #eval base10ex4 == "90256"
+--/-- Top level multibase encoding function -/
+def encodeBytes [Multibase β] (input: ByteArray) : String :=
+  encode β input.data.data
 
-    -- basic.csv
-    def basic : ByteArray := "yes mani !".toUTF8
-    #eval basic == ByteArray.mk #[0x79, 0x65, 0x73, 0x20, 0x6D, 0x61, 0x6E, 0x69, 0x20, 0x21]
+--/-- Top level multibase decoding function -/
+def decodeBytes [Multibase β] (x: String) : Option ByteArray :=
+  ByteArray.mk <$> Array.mk <$> Multibase.decode β x
 
-    #eval encode base2 basic == 
-      "001111001011001010111001100100000011011010110000101101110011010010010000000100001"
-    #eval encode base8 basic -- == "7362625631006654133464440102"
+structure Base2
+structure Base8
+structure Base10
+structure Base16
+structure Base16Upper
+structure Base32Hex
+structure Base32HexUpper
+structure Base32HexPad
+structure Base32HexPadUpper
+structure Base32
+structure Base32Upper
+structure Base32Pad
+structure Base32PadUpper
+structure Base32Z
+structure Base36
+structure Base36Upper
+structure Base58BTC
+structure Base58Flickr
+structure Base64
+structure Base64Pad
+structure Base64URL
+structure Base64URLPad
 
-    #eval encode base10            basic == "9573277761329450583662625"
-    #eval encode base16            basic == "f796573206d616e692021"
-    #eval encode base16upper       basic == "F796573206D616E692021"
-    #eval encode base32            basic == "bpfsxgidnmfxgsibb"
-    #eval encode base32upper       basic == "BPFSXGIDNMFXGSIBB"
-    #eval encode base32hex         basic == "vf5in683dc5n6i811"
-    #eval encode base32hexupper    basic == "VF5IN683DC5N6I811"
-    #eval encode base32pad         basic == "cpfsxgidnmfxgsibb"
-    #eval encode base32padupper    basic == "CPFSXGIDNMFXGSIBB"
-    #eval encode base32hexpad      basic == "tf5in683dc5n6i811"
-    #eval encode base32hexpadupper basic == "TF5IN683DC5N6I811"
-    #eval encode base32z           basic == "hxf1zgedpcfzg1ebb"
-    #eval encode base36            basic == "k2lcpzo5yikidynfl"
-    #eval encode base36upper       basic == "K2LCPZO5YIKIDYNFL"
-    #eval encode base58flickr      basic == "Z7Pznk19XTTzBtx"
-    #eval encode base58btc         basic == "z7paNL19xttacUY"
-    #eval encode base64            basic == "meWVzIG1hbmkgIQ"
-    #eval encode base64pad         basic == "MeWVzIG1hbmkgIQ=="
-    #eval encode base64url         basic == "ueWVzIG1hbmkgIQ"
-    #eval encode base64urlpad      basic == "UeWVzIG1hbmkgIQ=="
+instance : Multibase Base2 where
+  code := '0'
+  alpha := "01"
+  digit := digitBase2
+  read := readBase2
+  -- This seems not completely right given the multiformats base2 rfc
+  rfc4648 := true
+  pad := false
 
-    #eval "MA".toUTF8
-    #eval encode base64 {data := #[0x4d, 0x61, 0x00] }
-    #eval Nat.fromByteArrayBE "MA".toUTF8
-    #eval encode base64 "Man".toUTF8
-    #eval encode base64 "yes".toUTF8
-    #eval encode base64 "A".toUTF8 == "mQQ"
-    #eval encode base64 "AA".toUTF8 == "mQUE"
-    #eval encode base64 "AAA".toUTF8 == "mQUFB"
+instance : Multibase Base8 where
+  code := '7'
+  alpha: String := "01234567"
+  digit := digitBase8
+  read := readBase8
+  rfc4648 := true
+  pad := false
 
--- RFC4648 Test Vectors: https://datatracker.ietf.org/doc/html/rfc4648#section-10
-    #eval encode base64pad "".toUTF8       == ""
-    #eval encode base64pad "f".toUTF8      == "MZg=="
-    #eval encode base64pad "fo".toUTF8     == "MZm8g="
-    #eval encode base64pad "foo".toUTF8    == "MZm9v"
-    #eval encode base64pad "foob".toUTF8   == "MZm9vYg=="
-    #eval encode base64pad "fooba".toUTF8  == "MZm9vYmE="
-    #eval encode base64pad "foobar".toUTF8 == "MZm9vYmFy"
+instance : Multibase Base10 where
+  code := '9'
+  alpha: String := "0123456789"
+  digit := digitBase10
+  read := readBase10
+  rfc4648 := false
+  pad := false
 
-    #eval encode base32padupper "".toUTF8       == ""
-    #eval encode base32padupper "f".toUTF8      == "CMY======"
-    #eval encode base32padupper "fo".toUTF8     == "CMZXQ===="
-    #eval encode base32padupper "foo".toUTF8    == "CMZXW6==="
-    #eval encode base32padupper "foob".toUTF8   == "CMZXW6YQ="
-    #eval encode base32padupper "fooba".toUTF8  == "CMZXW6YTB"
-    #eval encode base32padupper "foobar".toUTF8 == "CMZXW6YTBOI======"
+instance : Multibase Base16 where
+  code := 'f'
+  alpha: String := "0123456789abcdef"
+  digit := digitBase16
+  read := readBase16
+  rfc4648 := true
+  pad := false
 
-    #eval encode base32hexpadupper "".toUTF8       == ""
-    #eval encode base32hexpadupper "f".toUTF8      == "TCO======"
-    #eval encode base32hexpadupper "fo".toUTF8     == "TCPNG===="
-    #eval encode base32hexpadupper "foo".toUTF8    == "TCPNMU==="
-    #eval encode base32hexpadupper "foob".toUTF8   == "TCPNMUOG="
-    #eval encode base32hexpadupper "fooba".toUTF8  == "TCPNMUOJ1"
-    #eval encode base32hexpadupper "fooba".toUTF8  == "TCPNMUOJ1"
-    #eval encode base32hexpadupper "foobar".toUTF8 == "TCPNMUOJ1E8======"
+instance : Multibase Base16Upper where
+  code := 'F'
+  alpha: String := "0123456789ABCDEF"
+  digit := digitBase16Upper
+  read := readBase16
+  rfc4648 := true
+  pad := false
 
-    #eval encode base16upper "".toUTF8       == ""
-    #eval encode base16upper "f".toUTF8      == "F66"
-    #eval encode base16upper "fo".toUTF8     == "F666F"
-    #eval encode base16upper "foo".toUTF8    == "F666F6F"
-    #eval encode base16upper "foob".toUTF8   == "F666F6F62"
-    #eval encode base16upper "fooba".toUTF8  == "F666F6F6261"
-    #eval encode base16upper "foobar".toUTF8 == "F666F6F626172"
+instance : Multibase Base32Hex where
+  code := 'v'
+  alpha: String := "0123456789abcdefghijklmnopqrstuv"
+  digit := digitBase32Hex
+  read := readBase32Hex
+  rfc4648 := true
+  pad := false
 
-    #eval encode base16 "hello world".toUTF8 == "f68656c6c6f20776f726c64"
-    #eval encode base16upper "hello world".toUTF8 == "F68656C6C6F20776F726C64"
-    #eval encode base32 "hello world".toUTF8 == "bnbswy3dpeb3w64tmmq"
-    #eval encode base32upper "hello world".toUTF8 -- == "F68656C6C6F20776F726C64"
-    #eval encode base36 "hello world".toUTF8 == "kfuvrsivvnfrbjwajo"
+instance : Multibase Base32HexUpper where
+  code := 'V'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+  digit := digitBase32HexUpper
+  read := readBase32Hex
+  rfc4648 := true
+  pad := false
 
-    
+instance : Multibase Base32HexPad where
+  code := 't'
+  alpha: String := "0123456789abcdefghijklmnopqrstuv"
+  digit := digitBase32Hex
+  read := readBase32Hex
+  rfc4648 := true
+  pad := true
 
-  end Test
+instance : Multibase Base32HexPadUpper where
+  code := 'T'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+  digit := digitBase32HexUpper
+  read := readBase32Hex
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32 where
+  code := 'b'
+  alpha: String := "abcdefghijklmnopqrstuvwxyz234567"
+  digit := digitBase32
+  read := readBase32
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32Upper where
+  code := 'B'
+  alpha: String := "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  digit := digitBase32Upper
+  read := readBase32
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base32Pad where
+  code := 'c'
+  alpha: String := "abcdefghijklmnopqrstuvwxyz234567"
+  digit := digitBase32
+  read := readBase32
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32PadUpper where
+  code := 'C'
+  alpha: String := "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  digit := digitBase32Upper
+  read := readBase32
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base32Z where
+  code := 'h'
+  alpha: String := "ybndrfg8ejkmcpqxot1uwisza345h769"
+  digit := digitBase32Z
+  read := readBase32Z
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base36 where
+  code := 'k'
+  alpha: String := "0123456789abcdefghijklmnopqrstuvwxyz"
+  digit := digitBase36
+  read := readBase36
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base36Upper where
+  code := 'K'
+  alpha: String := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  digit := digitBase36Upper
+  read := readBase36
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base58Flickr where
+  code := 'Z'
+  alpha: String := 
+    "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+  digit := digitBase58Flickr
+  read := readBase58Flickr
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base58BTC where
+  code := 'z'
+  alpha: String := 
+    "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+  digit := digitBase58BTC
+  read := readBase58BTC
+  rfc4648 := false
+  pad := false
+
+instance : Multibase Base64 where
+  code := 'm'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  digit := digitBase64
+  read := readBase64
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base64Pad where
+  code := 'M'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  digit := digitBase64
+  read := readBase64
+  rfc4648 := true
+  pad := true
+
+instance : Multibase Base64URL where
+  code := 'u'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  digit := digitBase64URL
+  read := readBase64URL
+  rfc4648 := true
+  pad := false
+
+instance : Multibase Base64URLPad where
+  code := 'U'
+  alpha: String := 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  digit := digitBase64URL
+  read := readBase64URL
+  rfc4648 := true
+  pad := true
 
 end Multibase
