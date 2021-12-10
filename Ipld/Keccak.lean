@@ -1,3 +1,14 @@
+namespace UInt64
+
+def rotateLOnce (word : UInt64) : UInt64 :=
+  (word <<< 1) ||| (word >>> 63)
+
+def rotateL : UInt64 → Nat → UInt64
+| word, 0 => word
+| word, n+1 => rotateL (rotateLOnce word) n
+
+end UInt64
+
 namespace ByteArray
 
 def toArrayUInt64LE (bytes : ByteArray) : Array UInt64 :=
@@ -61,7 +72,7 @@ def roundConstants : Array UInt64 := {
           , 0x8000000000008080, 0x0000000080000001, 0x8000000080008008 ]
 }
 
-def rotationConstants : Array UInt64 := {
+def rotationConstants : Array Nat := {
   data := [  0, 36,  3, 41, 18
           ,  1, 44, 10, 45,  2
           , 62,  6, 43, 15, 61
@@ -80,16 +91,16 @@ def piConstants : Array Nat := {
 def theta (state : Array UInt64) : Array UInt64 :=
   let b : Array UInt64  := Array.mkArray 5 0
   let c := Array.mapIdx b (λ i _ => UInt64.xor state[i*5] $ UInt64.xor state[i*5+1] $ UInt64.xor state[i*5+2] $ UInt64.xor state[i*5+3] state[i*5+4])
-  let d := Array.mapIdx b (λ i _ => (i, UInt64.xor c[Nat.mod (i + 4) 5] (UInt64.shiftLeft c[Nat.mod (i + 1) 5] 1)))
+  let d := Array.mapIdx b (λ i _ => (i, UInt64.xor c[Nat.mod (i + 4) 5] (UInt64.rotateL c[Nat.mod (i + 1) 5] 1)))
   Array.concatMap (λ (i, e) => { data := [UInt64.xor e state[i*5], UInt64.xor e state[i*5+1], UInt64.xor e state[i*5+2], UInt64.xor e state[i*5+3], UInt64.xor e state[i*5+4]]}) d
 
-def rho (state : Array UInt64) : Array UInt64 := Array.zipWith state rotationConstants UInt64.shiftLeft
+def rho (state : Array UInt64) : Array UInt64 := Array.zipWith state rotationConstants UInt64.rotateL
 
 def pi (state : Array UInt64) : Array UInt64 :=
   Array.map (λ i => state[i]) piConstants
 
 def chi (b : Array UInt64) : Array UInt64 :=
-  Array.mapIdx b (λ z el => UInt64.xor el (UInt64.complement (UInt64.land b[Nat.mod (z + 5) 25] b[Nat.mod (z + 10) 25])))
+  Array.mapIdx b (λ z el => UInt64.xor el (UInt64.land (UInt64.complement b[Nat.mod (z + 5) 25]) b[Nat.mod (z + 10) 25]))
 
 def iota (roundNumber : Nat) (state : Array UInt64) : Array UInt64 :=
   Array.modify state 0 (λ val => UInt64.xor roundConstants[roundNumber] val)
