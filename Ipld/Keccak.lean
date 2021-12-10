@@ -141,4 +141,40 @@ partial def absorbBlock (rate : Nat) (state : Array UInt64) (input : Array UInt6
 def absorb (rate : Nat) (bytes : ByteArray) : Array UInt64 :=
   absorbBlock rate emptyState (ByteArray.toArrayUInt64LE bytes)
 
+-- | Multi-rate padding appends at least 2 bits and at most the number of bits
+-- in a block plus one.
+def multiratePadding (bitrateBytes : Nat) (padByte : UInt8) (input : ByteArray) : ByteArray :=
+  let msglen := input.size
+  let padlen := bitrateBytes - Nat.mod input.size bitrateBytes
+  let totalLength := padlen + msglen
+  let b : Array UInt64  := Array.mkArray totalLength 0
+  {
+    data := Array.mapIdx b (λ x _ =>
+      if x < msglen then input[x]
+      else if (Nat.succ x) == totalLength && padlen == 1 then 0x80 ||| padByte
+      else if (Nat.succ x) == totalLength then 0x80
+      else if x == msglen then padByte
+      else 0x00)
+  }
+
+def paddingKeccak (bitrateBytes : Nat) : ByteArray → ByteArray :=
+  multiratePadding bitrateBytes 0x01
+
+def paddingSha3 (bitrateBytes : Nat) : ByteArray → ByteArray :=
+  multiratePadding bitrateBytes 0x06
+
+def paddingShake (bitrateBytes : Nat) : ByteArray → ByteArray :=
+  multiratePadding bitrateBytes 0x1F
+
+def shakeFunction (paddingFunction : Nat → ByteArray → ByteArray) (rate : Nat) (outputBytes : Nat) : ByteArray → ByteArray :=
+  squeeze rate outputBytes ∘ absorb rate ∘ paddingFunction (Nat.div rate 8)
+
+-- | SHAKE128 (128 bit security level) cryptographic extendable-output function
+def shake128 (outputBits : Nat) : ByteArray → ByteArray :=
+  shakeFunction paddingShake 1344 (Nat.div outputBits 8)
+
+-- | SHAKE256 (256 bit security level) cryptographic extendable-output function
+def shake256 (outputBits : Nat) : ByteArray → ByteArray :=
+  shakeFunction paddingShake 1088 (Nat.div outputBits 8)
+
 end Keccak
