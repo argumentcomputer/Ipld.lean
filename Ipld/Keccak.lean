@@ -1,5 +1,22 @@
 namespace ByteArray
 
+def toArrayUInt64LE (bytes : ByteArray) : Array UInt64 :=
+  let push_word := λ (pos, word, arr) byte =>
+    if pos < 7
+    then
+      let word := word + (byte.toUInt64 <<< (8*pos))
+      (pos+1, word, arr)
+    else
+      let word := word + (byte.toUInt64 <<< (8*pos))
+      let arr := arr.push word
+      (0, 0, arr)
+  let pos : UInt64 := 0
+  let word : UInt64 := 0
+  let (pos, word, arr) := foldl push_word (pos, word, Array.empty) bytes
+  if pos == 0
+  then arr
+  else arr.push word
+
 def fromArrayUInt64LE (arr : Array UInt64) : ByteArray :=
   let push_word := λ bytes word =>
     let bytes := bytes.push $ UInt64.toUInt8 word
@@ -12,6 +29,8 @@ def fromArrayUInt64LE (arr : Array UInt64) : ByteArray :=
     let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x38
     bytes
   Array.foldl push_word empty arr
+
+end ByteArray
 
 namespace Keccak
 
@@ -86,10 +105,29 @@ def keccakF (state : Array UInt64) : Array UInt64 :=
 def squeeze (rate : Nat) (l : Nat) (state : Array UInt64) : ByteArray :=
   let lanesToExtract := Nat.div l (Nat.div laneWidth 8)
   let threshold := Nat.div rate laneWidth
-  let rec stateToBytes : Nat -> Nat -> Nat -> Array UInt64 -> List UInt64
+  let rec stateToBytes : Nat → Nat → Nat → Array UInt64 → List UInt64
   | 0, _, _, _ => []
   | n+1, rate, x, s =>
     if x < threshold
     then List.cons s[(Nat.div x 5) + (Nat.mod x 5) * 5] (stateToBytes n rate (x+1) s)
     else stateToBytes n rate 0 (keccakF s)
   ByteArray.fromArrayUInt64LE { data := stateToBytes lanesToExtract threshold 0 state }
+
+
+partial def absorbBlock (rate : Nat) (state : Array UInt64) (input : Array UInt64) : Array UInt64 :=
+  if Array.isEmpty input
+  then state
+  else
+    let threshold := Nat.div rate laneWidth
+    let state' := Array.mapIdx state (λ z el =>
+      if (Nat.div z 5) + 5*(Nat.mod z 5) < threshold
+      then UInt64.xor el input[(Nat.div z 5) + 5*(Nat.mod z 5)]
+      else el)
+    let input := { data := List.drop (Nat.div rate 64) input.data }
+    absorbBlock rate (keccakF state') input
+
+
+def absorb (rate : Nat) (bytes : ByteArray) : Array UInt64 :=
+  absorbBlock rate emptyState (ByteArray.toArrayUInt64LE bytes)
+
+end Keccak
