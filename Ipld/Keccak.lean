@@ -1,3 +1,5 @@
+-- Keccak/SHA3 hash functions based on the Haskell implementation https://hackage.haskell.org/package/keccak
+
 namespace UInt64
 
 def rotateLOnce (word : UInt64) : UInt64 :=
@@ -176,5 +178,51 @@ def shake128 (outputBits : Nat) : ByteArray → ByteArray :=
 -- | SHAKE256 (256 bit security level) cryptographic extendable-output function
 def shake256 (outputBits : Nat) : ByteArray → ByteArray :=
   shakeFunction paddingShake 1088 (Nat.div outputBits 8)
+
+def hashFunction (paddingFunction : Nat → ByteArray → ByteArray) (rate : Nat) : ByteArray → ByteArray :=
+  let outputBytes := Nat.div (1600 - rate) 16
+  squeeze rate outputBytes ∘ absorb rate ∘ paddingFunction (Nat.div rate 8)
+
+-- | Given a bitrate @r@, returns a standard Keccak hash with state width @w@ = 1600 and
+-- capacity = 1600 - @r@
+def keccakHash : Nat → ByteArray → ByteArray :=
+  hashFunction paddingKeccak
+
+-- | Given a bitrate @r@, returns a standard SHA3 hash with state width @w@ = 1600 and
+-- capacity = 1600 - @r@
+def sha3Hash : Nat → ByteArray → ByteArray :=
+  hashFunction paddingSha3
+
+-- | Keccak (512 bits) cryptographic hash algorithm
+def keccak512 : ByteArray → ByteArray :=
+  keccakHash 576
+
+-- | Keccak (384 bits) cryptographic hash algorithm
+def keccak384 : ByteArray → ByteArray :=
+  keccakHash 832
+
+-- | Keccak (256 bits) cryptographic hash algorithm
+def keccak256 : ByteArray → ByteArray :=
+  keccakHash 1088
+
+-- | Keccak (224 bits) cryptographic hash algorithm
+def keccak224 : ByteArray → ByteArray :=
+  keccakHash 1152
+
+-- | SHA3 (512 bits) cryptographic hash algorithm
+def sha3_512 : ByteArray → ByteArray :=
+  sha3Hash 576
+
+-- | SHA3 (384 bits) cryptographic hash algorithm
+def sha3_384 : ByteArray → ByteArray :=
+  sha3Hash 832
+
+-- | SHA3 (256 bits) cryptographic hash algorithm
+def sha3_256 : ByteArray → ByteArray :=
+  sha3Hash 1088
+
+-- | SHA3 (224 bits) cryptographic hash algorithm
+def sha3_224 : ByteArray → ByteArray :=
+  sha3Hash 1152
 
 end Keccak
