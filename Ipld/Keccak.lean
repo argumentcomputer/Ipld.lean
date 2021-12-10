@@ -1,3 +1,20 @@
+namespace ByteArray
+
+def fromArrayUInt64LE (arr : Array UInt64) : ByteArray :=
+  let push_word := λ bytes word =>
+    let bytes := bytes.push $ UInt64.toUInt8 word
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x8
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x10
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x18
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x20
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x28
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x30
+    let bytes := bytes.push $ UInt64.toUInt8 $ word >>> 0x38
+    bytes
+  Array.foldl push_word empty arr
+
+namespace Keccak
+
 def rounds : Nat :=
   24
 
@@ -65,3 +82,14 @@ def keccakFAux : Nat → Nat → Array UInt64 → (Nat × Array UInt64)
 def keccakF (state : Array UInt64) : Array UInt64 :=
   let (_, state') := keccakFAux rounds 0 state
   state'
+
+def squeeze (rate : Nat) (l : Nat) (state : Array UInt64) : ByteArray :=
+  let lanesToExtract := Nat.div l (Nat.div laneWidth 8)
+  let threshold := Nat.div rate laneWidth
+  let rec stateToBytes : Nat -> Nat -> Nat -> Array UInt64 -> List UInt64
+  | 0, _, _, _ => []
+  | n+1, rate, x, s =>
+    if x < threshold
+    then List.cons s[(Nat.div x 5) + (Nat.mod x 5) * 5] (stateToBytes n rate (x+1) s)
+    else stateToBytes n rate 0 (keccakF s)
+  ByteArray.fromArrayUInt64LE { data := stateToBytes lanesToExtract threshold 0 state }
