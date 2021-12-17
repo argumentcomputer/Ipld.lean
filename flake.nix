@@ -41,7 +41,7 @@
       Blake3 = lean-blake3.project.${system};
       Neptune = lean-neptune.project.${system};
       Ipld = leanPkgs.buildLeanPackage {
-        src = ./.;
+        src = ./src;
         name = "Ipld";
         deps = [ Blake3 ];
       };
