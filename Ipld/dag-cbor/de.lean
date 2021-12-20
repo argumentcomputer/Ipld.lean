@@ -1,80 +1,82 @@
 -- TODO:
--- parse_f64 and deserialize_indefinites
--- Make generic parse_UInt and deserialize_number with Nat
+-- Add an internal cursor/iterator instead of incrementing Deserializer index
 -- Make a byte array structure with parse/deserialize functions as impls
 -- Only pass bytes up to given length instead of the whole array
--- ByteArray length for CID?
 -- Add error handling, especially when reading up to given length
 -- Add testing
+-- Change UInt64 to Nat where necessary
 
 import Ipld.Ipld
 import Ipld.Cid
 import Ipld.Multihash
 import Ipld.Utils
+import Ipld.UnsignedVarint
 import Std.Data.RBTree
 
 open Std (RBNode)
 
-def deserialize (bytes: ByteArray) : Ipld
-  match bytes[0] with
-  -- Unsigned integer types
-    | 0x00..=0x17 => deserialize_u8 bytes[0]
-  | 0x18 => deserialize_u8 bytes[1]
-  | 0x19 => deserialize_u16 (parse_u16 bytes[1:3])
-  | 0x1a => deserialize_u32 (parse_u32 bytes[1:5])
-  | 0x1b => deserialize_u64 (parse_u64 bytes[1:9])
+structure Deserializer where
+  bytes : ByteArray
+  i : UInt64
+
+def deserialize (self : Deserializer) : Ipld
+  match self.bytes[self.i] with
+  -- Unsigned integer
+  | 0x00..=0x17 => Ipld.number self.bytes[self.i].toUInt64
+  | 0x18 => deserialize_u8 self
+  | 0x19 => deserialize_u16 self
+  | 0x1a => deserialize_u32 self
+  | 0x1b => deserialize_u64 self
   | 0x1c..0x1f => Err(UnassignedCode)
-  -- Negative integer types
-  -- Unused for now
-  -- | 0x20..=0x37 => deserialize_i8(-1 - (bytes[1] - 0x20) as i8)
-  -- | 0x38 => deserialize_i16(-1 - bytes[1].toInt16)
-  -- | 0x39 => deserialize_i32((-1 - parse_u16(bytes[1:3]).toInt32)
-  -- | 0x3a => deserialize_i64((-1 - parse_u32(bytes[1:5]).toInt64)
+  -- Negative integer, unused for now
+  -- | 0x20..=0x37 => deserialize_i8 (-1 - (self.bytes[self.i+1] - 0x20).toInt8)
+  -- | 0x38 => deserialize_i16 (-1 - self.bytes[self.i+1].toInt16)
+  -- | 0x39 => deserialize_i32 (-1 - (parse_u16 self.bytes[self.i+1:self.i+3]).toInt32)
+  -- | 0x3a => deserialize_i64 (-1 - (parse_u32 self.bytes[self.i+1:self.i+5]).toInt64)
   -- | 0x3b =>
-  --   let value = parse_u64(bytes[1:9])
+  --   let value = parse_u64 self.bytes[self.i+1:self.i+9]
   --     if value > Int64.max.toUInt64
-  --       then deserialize_i128(-1 - value.toInt128)
-  --         else deserialize_i64(-1 - value.toInt64)
+  --     then deserialize_i128 (-1 - value.toInt128)
+  --     else deserialize_i64 (-1 - value.toInt64)
   -- | 0x3c..=0x3f => Err(UnassignedCode)
-  | 0x20..=0x3b => Err(InvalidDagCbor)
-  | 0x3c..=0x3f => Err(UnassignedCode)
-  -- Byte string types
-  | 0x40..=0x57 => deserialize_bytes bytes[1:] (bytes[0].toUInt64 - 0x40)
-  | 0x58 => deserialize_bytes bytes[2:] bytes[1].toUInt64
-  | 0x59 => deserialize_bytes bytes[4:] (parse_u16 bytes[1:3]).toUInt64
-  | 0x5a => deserialize_bytes bytes[6:] (parse_u32 bytes[1:5]).toUInt64
-  | 0x5b => deserialize_bytes bytes[10] (parse_u64 bytes[1:9])
+  -- Byte string/array
+  -- args: Deserializer, index incrementor, length
+  | 0x40..=0x57 => deserialize_bytes self 1 (self.bytes[self.i] - 0x40).toUInt64
+  | 0x58 => deserialize_bytes self 2 (self.bytes[self.i+1]).toUInt64
+  | 0x59 => deserialize_bytes self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x5a => deserialize_bytes self 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x5b => deserialize_bytes self 10 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x5c..=0x5e => Err(UnassignedCode)
-  | 0x5f => deserialize_indefinite_bytes bytes
-  -- Text string types
-  | 0x60..=0x77 => deserialize_string bytes[1:] (bytes[0].toUInt64 - 0x60)
-  | 0x78 => deserialize_string bytes[2:] bytes[1].toUInt64
-  | 0x79 => deserialize_string bytes[4:] (parse_u16 bytes[1:3]).toUInt64
-  | 0x7a => deserialize_string bytes[6:] (parse_u32 bytes[1:5]).toUInt64
-  | 0x7b => deserialize_string bytes[10:] (parse_u64 bytes[1:9])
+  --| 0x5f => deserialize_indefinite_bytes bytes
+  -- Text string
+  | 0x60..=0x77 => deserialize_string self 1 (self.bytes[self.i] - 0x60).toUInt64
+  | 0x78 => deserialize_string self 2 (self.bytes[self.i]).toUInt64
+  | 0x79 => deserialize_string self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x7a => deserialize_string self 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x7b => deserialize_string self 10(parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x7c..=0x7e => Err(UnassignedCode)
-  | 0x7f => deserialize_indefinite_string bytes
-  -- Array types
-  | 0x80..=0x97 => deserialize_array bytes[1:] (bytes[0].toUInt64 - 0x80)
-  | 0x98 => deserialize_array bytes[2:] bytes[1].toUInt64
-  | 0x99 => deserialize_array bytes[4:] (parse_u16 bytes[1:3]).toUInt64
-  | 0x9a => deserialize_array bytes[6:] (parse_u32 bytes[1:5]).toUInt64
-  | 0x9b => deserialize_array bytes[10:] (parse_u64 bytes[1:9])
+  --| 0x7f => deserialize_indefinite_string self.bytes
+  -- Array
+  | 0x80..=0x97 => deserialize_array self 1 (self.bytes[self.i] - 0x80).toUInt64
+  | 0x98 => deserialize_array self 2 self.bytes[self.i+1].toUInt64
+  | 0x99 => deserialize_array self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x9a => deserialize_array self 8 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x9b => deserialize_array self 10 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x9c..=0x9e => Err(UnassignedCode)
-  | 0x9f => deserialize_indefinite_array bytes
-  -- Map types
-  | 0xa0..=0xb7 => deserialize_map bytes[1:] (bytes[0].toUInt64 - 0xa0)
-  | 0xb8 => deserialize_map bytes[2:] bytes[1].toUInt64
-  | 0xb9 => deserialize_map bytes[4:] (parse_u16 bytes[1:3]).toUInt64
-  | 0xba => deserialize_map bytes[6:] (parse_u32 bytes[1:5]).toUInt64
-  | 0xbb => deserialize_map bytes[10:] (parse_u64 bytes[1:9])
+  --| 0x9f => deserialize_indefinite_array self.bytes
+  -- StringMap
+  | 0xa0..=0xb7 => deserialize_map 1 (self.bytes[self.i] - 0xa0).toUInt64
+  | 0xb8 => deserialize_map 2 self.bytes[self.i+1].toUInt64
+  | 0xb9 => deserialize_map 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0xba => deserialize_map 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0xbb => deserialize_map 10 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0xbc..=0xbe => Err(UnassignedCode)
-  | 0xbf => deserialize_indefinite_map bytes
+  --| 0xbf => deserialize_indefinite_map self.bytes
   -- CBOR tag (must be 42 or 0x2a)
   | 0xc0..=0xd7 => Err(InvalidDagCbor)
   | 0xd8 =>
-    if bytes[1] == 0x2a
-    then deserialize_link bytes[2:]
+    if self.bytes[self.i+1] == 0x2a
+    then deserialize_link self
     else Err(InvalidTag)
   -- Assume any tags larger than 1 byte are invalid
   | 0xd9..=0xdb => Err(InvalidDagCbor)
@@ -85,11 +87,13 @@ def deserialize (bytes: ByteArray) : Ipld
   | 0xf5 => deserialize_bool Bool.true
   | 0xf6..=0xf7 => deserialize_null()
   | 0xf8 => Err(UnassignedCode)
-  -- Floats must reject Nan, Infinity, and -Infinity
+  -- Floats must reject Nan, +Infinity, -Infinity
   | 0xf9..=0xfa => Err(InvalidDagCbor)
-  | 0xfb => deserialize_float bytes[1:9]
+  | 0xfb => deserialize_float self.bytes[1:9]
   | 0xfc..=0xfe => Err(UnassignedCode)
   | 0xff => Err(UnexpectedCode)
+  | _ => Err(UnexpectedCode)
+  ipld
 
 def parse_u16 (bytes : ByteArray) : UInt16 :=
   (Utils.fromByteArrayBE bytes).toUInt16
@@ -100,48 +104,105 @@ def parse_u32 (bytes : ByteArray) : UInt32 :=
 def parse_u64 (bytes : ByteArray) : UInt64 :=
   (Utils.fromByteArrayBE bytes).toUInt64
   
-def parse_f64 (bytes : ByteArray) : f64 :=
-  --unimplemented
-
-def deserialize_null () : Ipld :=
+def parse_f64 (bytes : ByteArray) : Float :=
+  (Utils.fromByteArrayBE bytes).toUInt64.toFloat
+  
+def deserialize_null (self : Deserializer) : Ipld := do
+  self.i := self.i + 1
   Ipld.null
   
-def deserialize_bool (bool : Bool) : Ipld :=
-  Ipld.bool := bool
+def deserialize_bool (self : Deserializer, bool : Bool) : Ipld := do
+  self.i := self.i + 1
+  Ipld.bool bool
 
-def deserialize_u8 (num : UInt8) : Ipld :=
-  Ipld.number := num.toUInt64
+def deserialize_u8 (self : Deserializer) : Ipld := do
+  let num := self.bytes[self.i+1].toUInt64
+  self.i := self.i + 2
+  Ipld.number num
 
-def deserialize_u16 (num : UInt16) : Ipld :=
-  Ipld.number := num.toUInt64
+def deserialize_u16 (self : Deserializer) : Ipld := do
+  let num := (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  self.i := self.i + 4
+  Ipld.number num
 
-def deserialize_u32 (bytes : UInt32) : Ipld :=
-  Ipld.number := num.toUInt64
+def deserialize_u32 (self : Deserializer) : Ipld := do
+  let num := (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  self.i := self.i + 6
+  Ipld.number num
 
-def deserialize_u64 (bytes : UInt64) : Ipld :=
-  Ipld.number := num
+def deserialize_u64 (self : Deserializer) : Ipld := do
+  let num := (parse_u64 self.bytes[self.i+1:self.i+9]).toUInt64
+  self.i := self.i + 10
+  Ipld.number num
   
-def deserialize_bytes (bytes : ByteArray, len : UInt64) : Ipld :=
-  Ipld.byte := bytes[:len]
+def deserialize_bytes (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+  let bytes : ByteArray := 
+    if len == 0 then []
+    else self.bytes[self.i+1:self.i+1+len]
+  self.i := self.i + inc + len
+  Ipld.byte bytes
   
-def deserialize_string (bytes : ByteArray, len : UInt64) : Ipld :=
-  Ipld.string := bytes[:len].ToString
+def deserialize_string (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+  let str : String := 
+    if len == 0 then ""
+    else self.bytes[self.i+1:self.i+1+len].ToString
+  self.i := self.i + inc + len
+  Ipld.string str
   
-def deserialize_array ( bytes : ByteArray, len : UInt64) : Ipld :=
-  Ipld.array := bytes[:len].toArray
+def deserialize_array (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+  self.i := self.i + inc
+  let array : Array Ipld := []
+  for item in [:len] do
+    array.push deserialize self
+  Ipld.array array
 
--- TODO
-def deserialize_map ( bytes : ByteArray, len : UInt64) : Ipld := do
-  let map := kvPairs {}
-  for elem in bytes[]
-    let (key, val) := elem
-    map.insert elem
-  Ipld.object := map
+def deserialize_map (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+  self.i := self.i + inc
+  let map : RBNode String (fun _ => Ipld) := RBNode.empty
+  for item in [:len] do
+    -- Deserialize key
+    -- Keys must be text strings
+    if self.bytes[self.i] < 0x60 || self.bytes[self.i] > 0x7b
+    then return Err(UnexpectedCode)
+    let key : String := (deserialize self).s
+    --Deserialize value into IPLD object
+    let val : Ipld := deserialize self
+    map.insert key val
+  Ipld.object map
 
--- TODO
-def deserialize_link ( bytes : ByteArray) : Ipld := do
-  let ver := 0x01
-  let code := 0x01
-  let mh := Multihash.fromBytes bytes[0:1]
-  let cid := Cid { version := ver, codec := code, hash := mh }
+def deserialize_link (self : Deserializer, len : UInt64) : Ipld := do
+  self.i := self.i + 2
+  if self.bytes[i] != 0
+  then return Err(InvalidCidPrefix)
+  self.i := self.i + 1
+  let v := varIntReadUInt64 bytes
+  self.i := self.i + v.1
+  v := v.0
+  let c := varIntReadUInt64 bytes
+  self.i := self.i + c.1
+  c := c.0
+  if version == 0x12 && codec == 0x20
+  then let mh := Multihash.fromBytes self.bytes[self.i:self.i+32]
+  else 
+    let size := self.bytes[self.i+2]
+    let mh := Multihash.fromBytes self.bytes[self.i:self.i+size]
+  let cid := Cid { version := v, codec := c, hash := mh }
   Ipld.link := cid
+
+-- Reads an unsigned-varint from a byte array one byte at a time
+-- After each byte, checks continuation bit (MSB == 1)
+-- If false, decodes the unsigned-varint into a Nat
+def varIntReadUInt64 (bytes : ByteArray) : Either (UInt64, UInt64) := do
+  let buf : ByteArray := [0;10]
+  let len : UInt64 := 0
+  for i in [0:buf.size] do
+    len := len + 1
+    if i >= bytes.size
+    then return Err(VarIntDecodeError)
+    buf[i] = bytes[i]
+    if isLast buf[i]
+    then return Ok (fromVarInt buf, len)
+  return Err(VarIntDecodeError)
+ 
+def isLast (byte : UInt8) : Bool := do
+  byte & 0x80 == 0
