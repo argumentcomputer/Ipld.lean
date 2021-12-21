@@ -41,9 +41,14 @@
       Blake3 = lean-blake3.project.${system};
       Neptune = lean-neptune.project.${system};
       Ipld = leanPkgs.buildLeanPackage {
-        src = ./.;
+        src = ./src;
         name = "Ipld";
         deps = [ Blake3 ];
+      };
+      test = leanPkgs.buildLeanPackage {
+        src = ./test;
+        name = "Tests";
+        deps = [ Ipld ];
       };
       joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ Ipld.allExternalDeps));
     in
@@ -51,6 +56,7 @@
       project = Ipld;
       packages = Ipld // {
         "Ipld" = Ipld.executable;
+        test = test.executable;
       };
 
       defaultPackage = self.packages.${system}.Ipld;
