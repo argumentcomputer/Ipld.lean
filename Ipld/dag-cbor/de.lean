@@ -155,67 +155,19 @@ def deserialize_map (self : Deserializer) (inc : UInt64) (len : UInt64) : Ipld :
   self.i := self.i + inc
   let map : RBNode String (fun _ => Ipld) := RBNode.empty
   for item in [:len] do
-    -- Deserialize key
-    -- Keys must be text strings
+    -- Deserialize key, must be a text string
     if self.bytes[self.i] < 0x60 || self.bytes[self.i] > 0x7b
     then return Err(UnexpectedCode)
     let key : String := (deserialize self).s
-    --Deserialize value into IPLD object
+    -- Deserialize value into IPLD object
     let val : Ipld := deserialize self
     map.insert key val
   Ipld.object map
 
-def deserialize_link (self : Deserializer) (len : UInt64) : Ipld := do
+def deserialize_link (self : Deserializer) : Ipld := do
   self.i := self.i + 2
-  if self.bytes[i] != 0
+  let bytes : ByteArray := (deserialize self).byte
+  if bytes[0] != 0
   then return Err(InvalidCidPrefix)
-  self.i := self.i + 1
-  let v := varIntReadUInt64 self.bytes
-  self.i := self.i + v.1
-  v := v.0
-  let c := varIntReadUInt64 self.bytes
-  self.i := self.i + c.1
-  c := c.0
-  if version == 0x12 && codec == 0x20
-  then let mh := Multihash.fromBytes self.bytes[self.i:self.i+32]
-  else 
-    let size := self.bytes[self.i+2]
-    let mh := Multihash.fromBytes self.bytes[self.i:self.i+size]
-  let cid := Cid { version := v, codec := c, hash := mh }
+  let cid := Cid.fromBytes bytes
   Ipld.link := cid
-
--- Reads an unsigned-varint from a byte array one byte at a time
--- After each byte, checks continuation bit (MSB == 1)
--- If false, decodes the unsigned-varint into a Nat
-def varIntReadUInt64 (bytes : ByteArray) : Except (UInt64, UInt64) := do
-  let buf : ByteArray := [0;10]
-  let len : UInt64 := 0
-  for i in [0:buf.size] do
-    len := len + 1
-    if i >= bytes.size
-    then return Err(VarIntDecodeError)
-    buf[i] = bytes[i]
-    if isLast buf[i]
-    then return Ok (fromVarInt buf, len)
-  return Err(VarIntDecodeError)
- 
-def isLast (byte : UInt8) : Bool := do
-  byte & 0x80 == 0
-
-import Ipld.Multihash
-import Ipld.UnsignedVarint
-
-structure Cid where
-  version : Nat
-  codec: Nat
-  hash: Multihash
-  deriving Inhabited
-
-def toBytes (self : Cid) : ByteArray :=
-  ByteArray.append (toVarInt self.version) $
-  ByteArray.append (toVarInt self.codec) $
-  self.hash.toBytes
-
-def fromBytes (bytes : ByteArray) : Except Error Cid := do
-  let version, len := varIntReadUInt64 bytes
-  let codec, len := varIntReadUInt64 bytes
