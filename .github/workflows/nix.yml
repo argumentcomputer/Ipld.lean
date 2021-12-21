@@ -56,7 +56,7 @@ jobs:
             keep-outputs = true
             extra-sandbox-paths = /nix/var/cache/ccache
             extra-substituters = file://${{ github.workspace }}/nix-store-cache?priority=10&trusted=true
-            extra-trusted-substituters = https://lean4.cachix.org/
+            extra-trusted-substituters = https://lean4.cachix.org/ https://lean-yatima.cachix.org/
             extra-trusted-public-keys = lean4.cachix.org-1:mawtxSxcaiWE24xCXXgh3qnvlTkyU7evRRnGeAhD4Wk= yatima.cachix.org-1:6jbu56QEDZs5hceqvWBxmh3XYQ7qPb3iuSww0yq7jUY= lean-yatima.cachix.org-1:8pRoDlOpkpqcRMuf3KAjEM+u8k8F3cuPYBnwPfFuc68= ' > ~/.config/nix/nix.conf
           sudo mkdir -m0770 -p /nix/var/cache/ccache
           # macOS standard chown doesn't support --reference

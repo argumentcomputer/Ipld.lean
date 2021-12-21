@@ -1,41 +1,4 @@
-namespace Nat
-
-  def toByteArrayCore : Nat → Nat → ByteArray → ByteArray
-  | 0, n, bytes => bytes
-  | fuel+1, n, bytes =>
-      let b: UInt8 := UInt8.ofNat (n % 256);
-      let n' := n / 256;
-      if n' = 0 then (bytes.push b)
-      else toByteArrayCore fuel n' (bytes.push b)
-
-  def toByteArrayLE (n: Nat) : ByteArray := 
-    toByteArrayCore (n+1) n { data := #[] }
-
-  def toByteArrayBE (n: Nat) : ByteArray := do
-    let bytes := (toByteArrayCore (n+1) n { data := #[]})
-    let mut bytes' : ByteArray := { data := #[]}
-    for i in [0:bytes.size] do
-      bytes' := bytes'.push (bytes.data[bytes.size - 1 - i])
-    bytes'
-
-  def lenBytes (n : Nat) : Nat := n.toByteArrayLE.size
-
-  def fromByteArrayLE (b: ByteArray) : Nat := do
-    let mut x := 0
-    for i in [:b.size] do
-      x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
-    return x
-
-  def fromByteArrayBE (b: ByteArray) : Nat := do
-    let mut x := 0
-    for i in [:b.size] do
-      x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
-    return x
-
-end Nat
-
-#eval Nat.fromByteArrayLE (Nat.toByteArrayLE 12345678910) == 12345678910
-#eval Nat.fromByteArrayBE (Nat.toByteArrayBE 12345678910) == 12345678910
+import Ipld.Utils
 
 def toVarIntCore : Nat → Nat → ByteArray → ByteArray
 | 0, n, bytes => bytes
@@ -47,6 +10,19 @@ def toVarIntCore : Nat → Nat → ByteArray → ByteArray
 
 def toVarInt (n: Nat) : ByteArray := 
   toVarIntCore (n+1) n { data := #[] }
+
+def readVarIntCore : Nat → Nat → ByteArray → Nat → Option (Nat × ByteArray)
+| 0, i, bs, n => some (n, bs)
+| fuel+1, i, [], n => none
+| fuel+1, i, b::bs, n => 
+  let b' := Nat.shiftLeft (UInt8.toNat b % 128) (i * 7)
+  if b / 128 == 0 then (n + b', bs) else readVarIntCore fuel (i + 1) bs (n + b')
+
+def readVarInt (b: ByteArray) : Option (Nat × ByteArray) :=
+  readVarIntCore b.size 0 b 0
+
+instance : BEq ByteArray where
+  beq a b := a.data == b.data
 
 def fromVarInt (b: ByteArray) : Nat := do
   let mut x := 0
