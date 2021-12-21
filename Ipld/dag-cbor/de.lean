@@ -1,7 +1,5 @@
 -- TODO:
 -- Add an internal cursor/iterator instead of incrementing Deserializer index
--- Make a byte array structure with parse/deserialize functions as impls
--- Only pass bytes up to given length instead of the whole array
 -- Add error handling, especially when reading up to given length
 -- Add testing
 -- Change UInt64 to Nat where necessary
@@ -81,15 +79,15 @@ def deserialize (self : Deserializer) : Ipld
   -- Assume any tags larger than 1 byte are invalid
   | 0xd9..=0xdb => Err(InvalidDagCbor)
   | 0xdc..=0xdf => Err(UnassignedCode)
-  -- Floats (64-bit, double precision), True, False, and Null types
   | 0xe0..=0xf3 => Err(UnassignedCode)
+  -- Bool and Null types
   | 0xf4 => deserialize_bool Bool.false
   | 0xf5 => deserialize_bool Bool.true
   | 0xf6..=0xf7 => deserialize_null()
   | 0xf8 => Err(UnassignedCode)
-  -- Floats must reject Nan, +Infinity, -Infinity
   | 0xf9..=0xfa => Err(InvalidDagCbor)
-  | 0xfb => deserialize_float self.bytes[1:9]
+  -- Floats (0xfb) are not supported
+  | 0xfb => Err(InvalidDagCbor)
   | 0xfc..=0xfe => Err(UnassignedCode)
   | 0xff => Err(UnexpectedCode)
   | _ => Err(UnexpectedCode)
@@ -104,14 +102,11 @@ def parse_u32 (bytes : ByteArray) : UInt32 :=
 def parse_u64 (bytes : ByteArray) : UInt64 :=
   (Utils.fromByteArrayBE bytes).toUInt64
   
-def parse_f64 (bytes : ByteArray) : Float :=
-  (Utils.fromByteArrayBE bytes).toUInt64.toFloat
-  
 def deserialize_null (self : Deserializer) : Ipld := do
   self.i := self.i + 1
   Ipld.null
   
-def deserialize_bool (self : Deserializer, bool : Bool) : Ipld := do
+def deserialize_bool (self : Deserializer) (bool : Bool) : Ipld := do
   self.i := self.i + 1
   Ipld.bool bool
 
@@ -135,28 +130,28 @@ def deserialize_u64 (self : Deserializer) : Ipld := do
   self.i := self.i + 10
   Ipld.number num
   
-def deserialize_bytes (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+def deserialize_bytes (self : Deserializer) (inc : UInt64) (len : UInt64) : Ipld := do
   let bytes : ByteArray := 
     if len == 0 then []
     else self.bytes[self.i+1:self.i+1+len]
   self.i := self.i + inc + len
   Ipld.byte bytes
   
-def deserialize_string (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+def deserialize_string (self : Deserializer) (inc : UInt64) (len : UInt64) : Ipld := do
   let str : String := 
     if len == 0 then ""
     else self.bytes[self.i+1:self.i+1+len].ToString
   self.i := self.i + inc + len
   Ipld.string str
   
-def deserialize_array (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+def deserialize_array (self : Deserializer) (inc : UInt64) (len : UInt64) : Ipld := do
   self.i := self.i + inc
   let array : Array Ipld := []
   for item in [:len] do
     array.push deserialize self
   Ipld.array array
 
-def deserialize_map (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := do
+def deserialize_map (self : Deserializer) (inc : UInt64) (len : UInt64) : Ipld := do
   self.i := self.i + inc
   let map : RBNode String (fun _ => Ipld) := RBNode.empty
   for item in [:len] do
@@ -170,15 +165,15 @@ def deserialize_map (self : Deserializer, inc : UInt64, len : UInt64) : Ipld := 
     map.insert key val
   Ipld.object map
 
-def deserialize_link (self : Deserializer, len : UInt64) : Ipld := do
+def deserialize_link (self : Deserializer) (len : UInt64) : Ipld := do
   self.i := self.i + 2
   if self.bytes[i] != 0
   then return Err(InvalidCidPrefix)
   self.i := self.i + 1
-  let v := varIntReadUInt64 bytes
+  let v := varIntReadUInt64 self.bytes
   self.i := self.i + v.1
   v := v.0
-  let c := varIntReadUInt64 bytes
+  let c := varIntReadUInt64 self.bytes
   self.i := self.i + c.1
   c := c.0
   if version == 0x12 && codec == 0x20
@@ -192,7 +187,7 @@ def deserialize_link (self : Deserializer, len : UInt64) : Ipld := do
 -- Reads an unsigned-varint from a byte array one byte at a time
 -- After each byte, checks continuation bit (MSB == 1)
 -- If false, decodes the unsigned-varint into a Nat
-def varIntReadUInt64 (bytes : ByteArray) : Either (UInt64, UInt64) := do
+def varIntReadUInt64 (bytes : ByteArray) : Except (UInt64, UInt64) := do
   let buf : ByteArray := [0;10]
   let len : UInt64 := 0
   for i in [0:buf.size] do
@@ -206,3 +201,21 @@ def varIntReadUInt64 (bytes : ByteArray) : Either (UInt64, UInt64) := do
  
 def isLast (byte : UInt8) : Bool := do
   byte & 0x80 == 0
+
+import Ipld.Multihash
+import Ipld.UnsignedVarint
+
+structure Cid where
+  version : Nat
+  codec: Nat
+  hash: Multihash
+  deriving Inhabited
+
+def toBytes (self : Cid) : ByteArray :=
+  ByteArray.append (toVarInt self.version) $
+  ByteArray.append (toVarInt self.codec) $
+  self.hash.toBytes
+
+def fromBytes (bytes : ByteArray) : Except Error Cid := do
+  let version, len := varIntReadUInt64 bytes
+  let codec, len := varIntReadUInt64 bytes
