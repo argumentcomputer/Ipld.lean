@@ -10,17 +10,17 @@ structure Cid where
 
 namespace Cid
 def toBytes (self : Cid) : ByteArray :=
- (toVarInt self.version) ++ (toVarInt self.codec) ++ Multihash.toBytes self.hash
+ (UnsignedVarint.toVarInt self.version) ++ (UnsignedVarint.toVarInt self.codec) ++ Multihash.toBytes self.hash
 
 def toString (self: Cid) : String :=
-  Multibase.encode Multibase.Base32 (toBytes self)
+  Multibase.encode Multibase.Base32 (toBytes self).toList
 
 instance : ToString Cid where
   toString := toString
 
 def fromBytes (bytes : ByteArray) : Option Cid :=
-  Option.bind (UnsignedVarint.readVarInt bytes) $ fun (version, bytes) =>
-  Option.bind (UnsignedVarint.readVarInt bytes) $ fun (codec, bytes) =>
+  Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (version, bytes) =>
+  Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (codec, bytes) =>
   Option.bind (Multihash.fromBytes bytes) $ fun hash =>
   some { version, codec, hash }
 
