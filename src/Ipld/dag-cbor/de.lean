@@ -41,33 +41,33 @@ def deserialize (self : Deserializer) : Ipld
   -- args: Deserializer, index incrementor, length
   | 0x40..=0x57 => deserialize_bytes self 1 (self.bytes[self.i] - 0x40).toUInt64
   | 0x58 => deserialize_bytes self 2 (self.bytes[self.i+1]).toUInt64
-  | 0x59 => deserialize_bytes self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
-  | 0x5a => deserialize_bytes self 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
-  | 0x5b => deserialize_bytes self 10 (parse_u64 self.bytes[self.i+1:self.i+9])
+  | 0x59 => deserialize_bytes self 3 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x5a => deserialize_bytes self 5 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x5b => deserialize_bytes self 9 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x5c..=0x5e => Err(UnassignedCode)
   --| 0x5f => deserialize_indefinite_bytes bytes
   -- Text string
   | 0x60..=0x77 => deserialize_string self 1 (self.bytes[self.i] - 0x60).toUInt64
   | 0x78 => deserialize_string self 2 (self.bytes[self.i]).toUInt64
-  | 0x79 => deserialize_string self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
-  | 0x7a => deserialize_string self 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
-  | 0x7b => deserialize_string self 10(parse_u64 self.bytes[self.i+1:self.i+9])
+  | 0x79 => deserialize_string self 3 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x7a => deserialize_string self 5 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x7b => deserialize_string self 9(parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x7c..=0x7e => Err(UnassignedCode)
   --| 0x7f => deserialize_indefinite_string self.bytes
   -- Array
   | 0x80..=0x97 => deserialize_array self 1 (self.bytes[self.i] - 0x80).toUInt64
   | 0x98 => deserialize_array self 2 self.bytes[self.i+1].toUInt64
-  | 0x99 => deserialize_array self 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
-  | 0x9a => deserialize_array self 8 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
-  | 0x9b => deserialize_array self 10 (parse_u64 self.bytes[self.i+1:self.i+9])
+  | 0x99 => deserialize_array self 3 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0x9a => deserialize_array self 5 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0x9b => deserialize_array self 9 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0x9c..=0x9e => Err(UnassignedCode)
   --| 0x9f => deserialize_indefinite_array self.bytes
   -- StringMap
   | 0xa0..=0xb7 => deserialize_map 1 (self.bytes[self.i] - 0xa0).toUInt64
   | 0xb8 => deserialize_map 2 self.bytes[self.i+1].toUInt64
-  | 0xb9 => deserialize_map 4 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
-  | 0xba => deserialize_map 6 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
-  | 0xbb => deserialize_map 10 (parse_u64 self.bytes[self.i+1:self.i+9])
+  | 0xb9 => deserialize_map 3 (parse_u16 self.bytes[self.i+1:self.i+3]).toUInt64
+  | 0xba => deserialize_map 5 (parse_u32 self.bytes[self.i+1:self.i+5]).toUInt64
+  | 0xbb => deserialize_map 9 (parse_u64 self.bytes[self.i+1:self.i+9])
   | 0xbc..=0xbe => Err(UnassignedCode)
   --| 0xbf => deserialize_indefinite_map self.bytes
   -- CBOR tag (must be 42 or 0x2a)

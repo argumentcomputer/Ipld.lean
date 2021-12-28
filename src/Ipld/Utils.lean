@@ -34,18 +34,6 @@ namespace Nat
 
   def byteLength (n : Nat) : Nat := n.toByteArrayLE.size
 
-  def fromByteArrayLE (b: ByteArray) : Nat := do
-    let mut x := 0
-    for i in [:b.size] do
-      x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
-    return x
-
-  /-- Read Nat from Big-Endian ByteArray -/
-  def fromByteArrayBE (b: ByteArray) : Nat := do
-    let mut x := 0
-    for i in [:b.size] do
-      x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
-    return x
 
   def fromByteListCore: Nat → List UInt8 → Nat → Nat
   | 0, bytes, n => n
@@ -71,6 +59,19 @@ namespace Nat
 end Nat
 
 namespace ByteArray
+
+def fromByteArrayLE (b: ByteArray) : Nat := do
+  let mut x := 0
+  for i in [:b.size] do
+    x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
+  return x
+
+/-- Read Nat from Big-Endian ByteArray -/
+def fromByteArrayBE (b: ByteArray) : Nat := do
+  let mut x := 0
+  for i in [:b.size] do
+    x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
+  return x
 
 def leadingZeroBits (bytes: ByteArray) : Nat := do
   let mut c := 0

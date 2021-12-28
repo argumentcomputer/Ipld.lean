@@ -13,3 +13,14 @@ inductive Ipld where
 | object (kvPairs : RBNode String (fun _ => Ipld))
 | link (cid: Cid)
 deriving Inhabited
+
+namespace Ipld
+
+def mkObject (o : List (String × Ipld)) : Ipld :=
+  object <| Id.run <| do
+    let mut kvPairs := RBNode.leaf
+    for (k, v) in o do
+      kvPairs := kvPairs.insert compare k v
+    kvPairs
+
+end Ipld
