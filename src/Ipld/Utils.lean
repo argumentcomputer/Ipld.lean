@@ -1,3 +1,7 @@
+import Std.Data.RBTree
+
+open Std (RBNode)
+
 namespace Nat
 
   def toByteArrayCore : Nat → Nat → ByteArray → ByteArray
@@ -33,7 +37,6 @@ namespace Nat
     toByteListCore (n+1) n []
 
   def byteLength (n : Nat) : Nat := n.toByteArrayLE.size
-
 
   def fromByteListCore: Nat → List UInt8 → Nat → Nat
   | 0, bytes, n => n
@@ -86,4 +89,26 @@ def pushZeros (bytes: ByteArray): Nat → ByteArray
 | 0 => bytes
 | n+1 => pushZeros (bytes.push 0) n
 
+def parseUInt16 (bytes : ByteArray) : UInt16 :=
+  bytes.fromByteArrayBE.toUInt16
+  
+def parseUInt32 (bytes : ByteArray) : UInt32 :=
+  bytes.fromByteArrayBE.toUInt32
+
+def parseUInt64 (bytes : ByteArray) : UInt64 :=
+  bytes.fromByteArrayBE.toUInt64
+       
+def as (s : Subarray UInt8) : ByteArray :=
+  s.as.data.toByteArray
+
 end ByteArray
+
+namespace RBNode
+
+def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
+  map.revFold (fun as a b => (a,b)::as) []
+
+instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
+  beq a b := RBNode.toList a == RBNode.toList b
+     
+end RBNode

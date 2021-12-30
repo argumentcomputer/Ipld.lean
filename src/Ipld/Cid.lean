@@ -6,7 +6,7 @@ structure Cid where
   version : Nat
   codec: Nat
   hash: Multihash
-  deriving Inhabited
+  deriving BEq, Inhabited
 
 namespace Cid
 def toBytes (self : Cid) : ByteArray :=

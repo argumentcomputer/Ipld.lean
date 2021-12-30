@@ -12,7 +12,7 @@ inductive Ipld where
 | array (elems : Array Ipld)
 | object (kvPairs : RBNode String (fun _ => Ipld))
 | link (cid: Cid)
-deriving Inhabited
+deriving BEq, Inhabited
 
 namespace Ipld
 

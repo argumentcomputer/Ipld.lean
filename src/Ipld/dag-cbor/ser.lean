@@ -108,7 +108,7 @@ def hash_ex1 : Multihash := { code := 0x11, size := 0x4,  digest := { data := #[
 def cid_ex1 : Cid := { version := 0x1, codec := 0x11, hash := hash_ex1 }
 def cid_ex1_encoded : ByteArray := { data := #[0xd8, 0x2a, 0x49, 0x0, 0x1, 0x11, 0x11, 0x4, 0xb6, 0xf8, 0x5c, 0xb5] }
 
-#eval serialize { data := #[] } Ipld.null == { data := #[0xf6]}
+#eval serialize { data := #[] } Ipld.null == { data := #[0xf6] }
 #eval serialize { data := #[] } (Ipld.bool true) == { data := #[0xf5] }
 #eval serialize { data := #[] } (Ipld.number 1) == { data := #[0x1] }
 #eval serialize { data := #[] } (Ipld.string "Hello") == string_ex1_encoded
