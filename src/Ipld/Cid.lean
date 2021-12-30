@@ -1,5 +1,6 @@
 import Ipld.Multihash
 import Ipld.Multibase
+import Ipld.Utils
 import Ipld.UnsignedVarint
 
 structure Cid where
@@ -9,6 +10,7 @@ structure Cid where
   deriving BEq, Inhabited
 
 namespace Cid
+
 def toBytes (self : Cid) : ByteArray :=
  (UnsignedVarint.toVarInt self.version) ++ (UnsignedVarint.toVarInt self.codec) ++ Multihash.toBytes self.hash
 

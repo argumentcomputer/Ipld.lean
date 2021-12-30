@@ -1,7 +1,15 @@
 import Ipld.Cid
+import Ipld.Multihash
+import Ipld.Utils
 import Std.Data.RBTree
 
 open Std (RBNode)
+
+def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
+  map.revFold (fun as a b => (a,b)::as) []
+
+instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
+  beq a b := toList a == toList b
 
 inductive Ipld where
 | null

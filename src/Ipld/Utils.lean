@@ -97,11 +97,15 @@ def parseUInt32 (bytes : ByteArray) : UInt32 :=
 
 def parseUInt64 (bytes : ByteArray) : UInt64 :=
   bytes.fromByteArrayBE.toUInt64
-       
-def as (s : Subarray UInt8) : ByteArray :=
-  s.as.data.toByteArray
 
 end ByteArray
+    
+namespace Subarray
+
+def asBA (s : Subarray UInt8) : ByteArray :=
+  s.as.data.toByteArray
+
+end Subarray
 
 namespace RBNode
 
