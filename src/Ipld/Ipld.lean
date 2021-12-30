@@ -10,6 +10,9 @@ def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
 
 instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
   beq a b := toList a == toList b
+  
+instance : BEq Cid where
+  beq a b := a.version == b.version && a.codec == b.codec && a.hash == b.hash
 
 inductive Ipld where
 | null
@@ -23,12 +26,12 @@ inductive Ipld where
 deriving BEq, Inhabited
 
 namespace Ipld
-
+          
 def mkObject (o : List (String × Ipld)) : Ipld :=
   object <| Id.run <| do
     let mut kvPairs := RBNode.leaf
     for (k, v) in o do
       kvPairs := kvPairs.insert compare k v
     kvPairs
-
+    
 end Ipld

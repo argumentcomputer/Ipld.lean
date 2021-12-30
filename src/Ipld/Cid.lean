@@ -25,7 +25,7 @@ def fromBytes (bytes : ByteArray) : Option Cid :=
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (codec, bytes) =>
   Option.bind (Multihash.fromBytes bytes) $ fun hash =>
   some { version, codec, hash }
-
+       
 namespace Test
 
 def ex1 : Cid := { version := 0x1, codec := 0x11, hash := Multihash.Test.ex1 }

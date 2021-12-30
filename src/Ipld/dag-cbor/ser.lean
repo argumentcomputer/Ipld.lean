@@ -1,6 +1,7 @@
 import Ipld.Ipld
 import Ipld.Cid
 import Ipld.Utils
+import Ipld.De
 import Std.Data.RBTree
 
 open Std (RBNode)
@@ -64,10 +65,6 @@ def serialize_link (self : ByteArray) (l: Cid) : ByteArray := do
 def nodeToList (map : RBNode String (fun _ => Ipld)) : List (String × Ipld) := 
   map.revFold (fun as a b => (a,b)::as) []
 
-def nodeSize (map : RBNode String (fun _ => Ipld)) : Nat := do
-  -- map.fold (fun Id.run sz _ _ => sz + 1 ) 0
-  (nodeToList map).length
-
 mutual
 
 partial def serialize : ByteArray -> Ipld -> ByteArray
@@ -101,6 +98,7 @@ namespace Test
 def string_ex1 := "Hello"
 def string_ex1_encoded : ByteArray := { data := #[0x65, 0x48, 0x65, 0x6c, 0x6c, 0x6f] }
 def bytes_ex1_encoded : ByteArray := { data := #[0x45, 0x48, 0x65, 0x6c, 0x6c, 0x6f] }
+def array_ex1 : Array Ipld := { data := [Ipld.string "Hello"] }
 def array_ex1_encoded : ByteArray := { data := #[0x81, 0x65, 0x48, 0x65, 0x6c, 0x6c, 0x6f]}
 def object_ex1 : RBNode String (fun _ => Ipld) := RBNode.singleton "Hello" (Ipld.string "World")
 def object_ex1_encoded : ByteArray := { data := #[0xa1, 0x65, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x65, 0x57, 0x6f, 0x72, 0x6c, 0x64] }
@@ -113,9 +111,19 @@ def cid_ex1_encoded : ByteArray := { data := #[0xd8, 0x2a, 0x49, 0x0, 0x1, 0x11,
 #eval serialize { data := #[] } (Ipld.number 1) == { data := #[0x1] }
 #eval serialize { data := #[] } (Ipld.string "Hello") == string_ex1_encoded
 #eval serialize { data := #[] } (Ipld.byte "Hello".toUTF8) == bytes_ex1_encoded
-#eval serialize { data := #[] } (Ipld.array { data := [Ipld.string "Hello"] }) == array_ex1_encoded
+#eval serialize { data := #[] } (Ipld.array array_ex1) == array_ex1_encoded
 #eval serialize { data := #[] } (Ipld.object object_ex1) == object_ex1_encoded
 #eval serialize { data := #[] } (Ipld.link cid_ex1) == cid_ex1_encoded
+
+--Roundtrip testing
+#eval De.deserialize (serialize Ipld.null) == Ipld.null
+#eval De.deserialize (serialize Ipld.bool true) == Ipld.bool true
+#eval De.deserialize (serialize Ipld.number 1) == Ipld.number 1
+#eval De.deserialize (serialize Ipld.string "Hello") == Ipld.string "Hello"
+#eval De.deserialize (serialize Ipld.byte "Hello".toUTF8) == Ipld.byte "Hello".toUTF8
+#eval De.deserialize (serialize Ipld.array array_ex1) == Ipld.array array_ex1
+#eval De.deserialize (serialize Ipld.object object_ex1) == Ipld.object object_ex1
+#eval De.deserialize (serialize Ipld.cid cid_ex1) == Ipld.cid cid_ex1
 
 end Test
 
