@@ -10,12 +10,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.lean.follows = "lean";
       inputs.flake-utils.follows = "flake-utils";
+      inputs.utils.follows = "utils";
     };
     lean-neptune = {
       url = github:yatima-inc/lean-neptune;
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.lean.follows = "lean";
       inputs.flake-utils.follows = "flake-utils";
+      inputs.utils.follows = "utils";
     };
 
     flake-utils = {
@@ -43,7 +45,7 @@
       Ipld = leanPkgs.buildLeanPackage {
         src = ./src;
         name = "Ipld";
-        deps = [ Blake3 ];
+        deps = [ Blake3 Neptune ];
       };
       test = leanPkgs.buildLeanPackage {
         src = ./test;
@@ -55,7 +57,7 @@
     {
       project = Ipld;
       packages = Ipld // {
-        "Ipld" = Ipld.executable;
+        "Ipld" = Ipld.sharedLib;
         test = test.executable;
       };
 

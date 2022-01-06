@@ -11,7 +11,7 @@ def toVarIntCore : Nat → Nat → ByteArray → ByteArray
 def toVarInt (n: Nat) : ByteArray := 
   toVarIntCore (n+1) n { data := #[] }
 
-def fromVarInt (b: ByteArray) : Nat := do
+def fromVarInt (b: ByteArray) : Nat := Id.run do
   let mut x := 0
   for i in [:b.size] do
     x := x + Nat.shiftLeft (UInt8.toNat b.data[i] % 128) (i * 7)
