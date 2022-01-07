@@ -2,11 +2,14 @@ import Ipld.Utils
 import Ipld.UnsignedVarint
 import Ipld.Multibase
 
+instance : Repr ByteArray where
+  reprPrec x prec := Repr.addAppParen ("ByteArray" ++ toString x.data) prec
+
 structure Multihash where
   code : Nat
   size : Nat
   digest : ByteArray
-  deriving BEq, Inhabited
+  deriving BEq, Inhabited, Repr
 
 namespace Multihash
 

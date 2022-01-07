@@ -7,7 +7,7 @@ structure Cid where
   version : Nat
   codec: Nat
   hash: Multihash
-  deriving BEq, Inhabited
+  deriving BEq, Inhabited, Repr
 
 namespace Cid
 
@@ -25,7 +25,7 @@ def fromBytes (bytes : ByteArray) : Option Cid :=
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (codec, bytes) =>
   Option.bind (Multihash.fromBytes bytes) $ fun hash =>
   some { version, codec, hash }
-       
+
 namespace Test
 
 def ex1 : Cid := { version := 0x1, codec := 0x11, hash := Multihash.Test.ex1 }
