@@ -17,7 +17,7 @@ namespace Nat
     toByteArrayCore (n+1) n { data := #[] }
 
   /-- Convert Nat to Big-Endian ByteArray -/
-  def toByteArrayBE (n: Nat) : ByteArray := do
+  def toByteArrayBE (n: Nat) : ByteArray := Id.run do
     let bytes := (toByteArrayCore (n+1) n { data := #[]})
     let mut bytes' : ByteArray := { data := #[]}
     for i in [0:bytes.size] do
@@ -33,10 +33,23 @@ namespace Nat
       else toByteListCore fuel n' (bytes.cons b)
 
   /-- Convert Nat to Big-Endian byte list -/
-  def toByteListBE (n: Nat) : List UInt8 := do
+  def toByteListBE (n: Nat) : List UInt8 :=
     toByteListCore (n+1) n []
 
   def byteLength (n : Nat) : Nat := n.toByteArrayLE.size
+
+  def fromByteArrayLE (b: ByteArray) : Nat := Id.run do
+    let mut x := 0
+    for i in [:b.size] do
+      x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
+    return x
+
+  /-- Read Nat from Big-Endian ByteArray -/
+  def fromByteArrayBE (b: ByteArray) : Nat := Id.run do
+    let mut x := 0
+    for i in [:b.size] do
+      x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
+    return x
 
   def fromByteListCore: Nat → List UInt8 → Nat → Nat
   | 0, bytes, n => n
@@ -63,20 +76,20 @@ end Nat
 
 namespace ByteArray
 
-def fromByteArrayLE (b: ByteArray) : Nat := do
+def fromByteArrayLE (b: ByteArray) : Nat := Id.run do
   let mut x := 0
   for i in [:b.size] do
     x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
   return x
 
 /-- Read Nat from Big-Endian ByteArray -/
-def fromByteArrayBE (b: ByteArray) : Nat := do
+def fromByteArrayBE (b: ByteArray) : Nat := Id.run do
   let mut x := 0
   for i in [:b.size] do
     x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
   return x
 
-def leadingZeroBits (bytes: ByteArray) : Nat := do
+def leadingZeroBits (bytes: ByteArray) : Nat := Id.run do
   let mut c := 0
   for byte in bytes do
     let zs := (8 - Nat.sigBits (UInt8.toNat byte))
@@ -91,7 +104,7 @@ def pushZeros (bytes: ByteArray): Nat → ByteArray
 
 def parseUInt16 (bytes : ByteArray) : UInt16 :=
   bytes.fromByteArrayBE.toUInt16
-  
+
 def parseUInt32 (bytes : ByteArray) : UInt32 :=
   bytes.fromByteArrayBE.toUInt32
 
@@ -99,7 +112,7 @@ def parseUInt64 (bytes : ByteArray) : UInt64 :=
   bytes.fromByteArrayBE.toUInt64
 
 end ByteArray
-    
+
 namespace Subarray
 
 def asBA (s : Subarray UInt8) : ByteArray :=

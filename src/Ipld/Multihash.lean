@@ -23,7 +23,7 @@ def toString (self: Multihash) : String :=
 instance : ToString Multihash where
   toString := toString
 
-def fromBytes (bytes : ByteArray) : Option Multihash := do
+def fromBytes (bytes : ByteArray) : Option Multihash :=
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (code, bytes) =>
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (size, bytes) =>
   let digest := bytes

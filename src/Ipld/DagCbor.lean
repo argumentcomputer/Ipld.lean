@@ -54,7 +54,7 @@ def ser_string (s: String) : ByteArray :=
 def ser_bytes (b: ByteArray) : ByteArray :=
   ByteArray.append (ser_u64 2 b.size.toUInt64) b
 
-def ser_link (l: Cid) : ByteArray := do
+def ser_link (l: Cid) : ByteArray := Id.run do
   let mut out := ByteArray.mk #[]
   out := out.append (ser_u64 6 42)
   let buf := Cid.toBytes l
@@ -77,13 +77,13 @@ partial def serialize : Ipld -> ByteArray
   | Ipld.object o => ser_object o
   | Ipld.link cid => ser_link cid
 
-partial def ser_array (a: Array Ipld) : ByteArray := do
+partial def ser_array (a: Array Ipld) : ByteArray := Id.run do
   let mut self := ser_u64 4 a.size.toUInt64
   for i in [:a.size] do
     self := self.append (serialize a[i])
   self
 
-partial def ser_object (o: RBNode String (fun _ => Ipld)) : ByteArray := do
+partial def ser_object (o: RBNode String (fun _ => Ipld)) : ByteArray := Id.run do
   let list := nodeToList o
   let mut self := ser_u64 5 list.length.toUInt64
   for (k, v) in list do

@@ -68,7 +68,7 @@ def leadingZeroBitsCore: Nat → List UInt8 → Nat → Nat
 | fuel+1, 0::bs, n => leadingZeroBitsCore fuel bs (n + 8)
 | fuel+1, b::bs, n => n + (8 - Nat.sigBits (UInt8.toNat b))
 
-def leadingZeroBits (bytes: List UInt8) : Nat := do
+def leadingZeroBits (bytes: List UInt8) : Nat :=
   leadingZeroBitsCore (bytes.length) bytes 0
 
 def encode [Multibase β] (x: List UInt8): String :=
@@ -97,7 +97,7 @@ def encode [Multibase β] (x: List UInt8): String :=
 def fromPad [Multibase β]: Nat → Nat → Nat → String → Option (Nat × Nat)
 | 0, pad, acc, input => Option.some (pad, acc)
 | fuel+1, pad, acc, "" => Option.some (pad, acc)
-| fuel+1, pad, acc, input => do
+| fuel+1, pad, acc, input =>
   if (input[0] == '=')
   then fromPad fuel (pad+1) (acc * (base β)) (String.drop input 1)
   else Option.none
@@ -105,12 +105,12 @@ def fromPad [Multibase β]: Nat → Nat → Nat → String → Option (Nat × Na
 def fromStringCore [Multibase β]: Nat → Nat → String → Option (Nat × Nat)
 | 0, acc, input => Option.some (0, acc)
 | fuel+1, acc, "" => Option.some (0, acc)
-| fuel+1, acc, input => do
-let c := input[0]
-if some c == '='
-then (fromPad β (fuel+1) 0 acc input)
-else Option.bind (read β input[0]) (fun d =>
-  fromStringCore fuel (acc * (base β) + d) (String.drop input 1))
+| fuel+1, acc, input =>
+  let c := input[0]
+  if some c == '='
+  then (fromPad β (fuel+1) 0 acc input)
+  else Option.bind (read β input[0]) (fun d =>
+    fromStringCore fuel (acc * (base β) + d) (String.drop input 1))
 
 def fromString [m: Multibase β]: String → Option (List UInt8)
 | "" => some []
