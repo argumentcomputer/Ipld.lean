@@ -1,9 +1,10 @@
 import Ipld.Utils
 import Ipld.UnsignedVarint
 import Ipld.Multibase
+import Ipld.Keccak
 
 instance : Repr ByteArray where
-  reprPrec x prec := Repr.addAppParen ("ByteArray" ++ toString x.data) prec
+  reprPrec x prec := Repr.addAppParen ("ByteArray " ++ toString x.data) prec
 
 structure Multihash where
   code : Nat
@@ -22,12 +23,15 @@ def toString (self: Multihash) : String :=
 instance : ToString Multihash where
   toString := toString
 
-def fromBytes (bytes : ByteArray) : Option Multihash :=
+def fromBytes (bytes : ByteArray) : Option Multihash := do
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (code, bytes) =>
   Option.bind (UnsignedVarint.fromVarInt bytes) $ fun (size, bytes) =>
   let digest := bytes
   if digest.size > size then none
   else some { code, size, digest }
+
+def sha3_256 (x: ByteArray) : Multihash :=
+  {code := 0x16, size := 32, digest := Keccak.sha3_256 x }
 
 namespace Test
 

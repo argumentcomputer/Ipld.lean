@@ -19,7 +19,7 @@ inductive Ipld where
 | bool (b : Bool)
 | number (n : UInt64)
 | string (s : String)
-| byte (b : ByteArray)
+| bytes (b : ByteArray)
 | array (elems : Array Ipld)
 | object (kvPairs : RBNode String (fun _ => Ipld))
 | link (cid: Cid)
@@ -31,7 +31,8 @@ instance : Repr Ipld where
   | Ipld.bool b, prec => Repr.addAppParen ("Ipld.bool " ++ toString b) prec
   | Ipld.number n, prec => Repr.addAppParen ("Ipld.number " ++ toString n) prec
   | Ipld.string n, prec => Repr.addAppParen ("Ipld.string " ++ toString n) prec
-  | Ipld.byte n, prec => Repr.addAppParen ("Ipld.byte " ++ toString n) prec
+  | Ipld.bytes n, prec => Repr.addAppParen ("Ipld.bytes " ++ toString n) prec
+  | Ipld.link n, prec => Repr.addAppParen ("Ipld.link " ++ toString n) prec
   --| Ipld.array n, prec => Repr.addAppParen ("Ipld.array " ++ reprPrec n.data prec) prec
   | _, prec => Repr.addAppParen ("Ipld.todo") prec
 
