@@ -1,3 +1,7 @@
+import Std.Data.RBTree
+
+open Std (RBNode)
+
 namespace Nat
 
   def toByteArrayCore : Nat → Nat → ByteArray → ByteArray
@@ -72,6 +76,19 @@ end Nat
 
 namespace ByteArray
 
+def fromByteArrayLE (b: ByteArray) : Nat := Id.run do
+  let mut x := 0
+  for i in [:b.size] do
+    x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
+  return x
+
+/-- Read Nat from Big-Endian ByteArray -/
+def fromByteArrayBE (b: ByteArray) : Nat := Id.run do
+  let mut x := 0
+  for i in [:b.size] do
+    x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
+  return x
+
 def leadingZeroBits (bytes: ByteArray) : Nat := Id.run do
   let mut c := 0
   for byte in bytes do
@@ -85,4 +102,30 @@ def pushZeros (bytes: ByteArray): Nat → ByteArray
 | 0 => bytes
 | n+1 => pushZeros (bytes.push 0) n
 
+def parseUInt16 (bytes : ByteArray) : UInt16 :=
+  bytes.fromByteArrayBE.toUInt16
+
+def parseUInt32 (bytes : ByteArray) : UInt32 :=
+  bytes.fromByteArrayBE.toUInt32
+
+def parseUInt64 (bytes : ByteArray) : UInt64 :=
+  bytes.fromByteArrayBE.toUInt64
+
 end ByteArray
+
+namespace Subarray
+
+def asBA (s : Subarray UInt8) : ByteArray :=
+  s.as.data.toByteArray
+
+end Subarray
+
+namespace RBNode
+
+def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
+  map.revFold (fun as a b => (a,b)::as) []
+
+instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
+  beq a b := RBNode.toList a == RBNode.toList b
+     
+end RBNode
