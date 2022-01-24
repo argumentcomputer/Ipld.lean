@@ -1,76 +1,64 @@
 {
+  description = "A Lean Ipld library";
+
   inputs = {
-    utils.url = "github:yatima-inc/nix-utils";
-    nixpkgs.url = github:nixos/nixpkgs/nixos-21.05;
     lean = {
       url = github:leanprover/lean4;
     };
-    lean-blake3 = {
-      url = github:yatima-inc/lean-blake3;
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.lean.follows = "lean";
-      inputs.flake-utils.follows = "flake-utils";
-      inputs.utils.follows = "utils";
-    };
-    lean-neptune = {
-      url = github:yatima-inc/lean-neptune;
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.lean.follows = "lean";
-      inputs.flake-utils.follows = "flake-utils";
-      inputs.utils.follows = "utils";
-    };
-
-    flake-utils = {
-      url = github:numtide/flake-utils;
+    nixpkgs.url = github:nixos/nixpkgs/nixos-21.05;
+    utils = {
+      url = github:yatima-inc/nix-utils;
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs =
-    { self
-    , utils
-    , nixpkgs
-    , flake-utils
-    , lean
-    , lean-blake3
-    , lean-neptune
-    }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs = { self, lean, utils, nixpkgs }:
     let
-      lib = utils.lib.${system};
-      pkgs = nixpkgs.legacyPackages.${system};
-      leanPkgs = lean.packages.${system};
-      Blake3 = lean-blake3.project.${system};
-      Neptune = lean-neptune.project.${system};
-      Ipld = leanPkgs.buildLeanPackage {
-        src = ./src;
-        name = "Ipld";
-        deps = [ Blake3 Neptune ];
-      };
-      test = leanPkgs.buildLeanPackage {
-        src = ./test;
-        name = "Tests";
-        deps = [ Ipld ];
-      };
-      joinDepsDerivationns = getSubDrv: lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([Ipld] ++ Ipld.allExternalDeps));
+      supportedSystems = [
+        # "aarch64-linux"
+        # "aarch64-darwin"
+        "i686-linux"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ];
+      inherit (utils) lib;
     in
-    {
-      project = Ipld;
-      packages = Ipld // {
-        "Ipld" = Ipld.sharedLib;
-        test = test.executable;
-      };
+    lib.eachSystem supportedSystems (system:
+      let
+        leanPkgs = lean.packages.${system};
+        pkgs = nixpkgs.legacyPackages.${system};
+        name = "Ipld";  # must match the name of the top-level .lean file
+        project = leanPkgs.buildLeanPackage {
+          inherit name;
+          # deps = [ lean-ipld.project.${system} ];
+          # Where the lean files are located
+          src = ./src;
+        };
+        test = leanPkgs.buildLeanPackage {
+          name = "Tests";
+          deps = [ project ];
+          # Where the lean files are located
+          src = ./test;
+        };
+        joinDepsDerivationns = getSubDrv:
+          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([ project ] ++ project.allExternalDeps));
+      in
+      {
+        inherit project test;
+        packages = {
+          ${name} = project.executable;
+        };
 
-      defaultPackage = self.packages.${system}.Ipld;
+        checks.test = test.executable;
 
-      # `nix develop`
-      devShell = pkgs.mkShell {
-        inputsFrom = [ Ipld.executable ];
-        buildInputs = with pkgs; [
-          leanPkgs.lean
-        ];
-        LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
-        LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
-      };
-    });
+        defaultPackage = self.packages.${system}.${name};
+        devShell = pkgs.mkShell {
+          inputsFrom = [ project.executable ];
+          buildInputs = with pkgs; [
+            leanPkgs.lean
+          ];
+          LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
+          LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
+        };
+      });
 }
