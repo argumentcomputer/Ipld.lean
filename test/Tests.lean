@@ -1,4 +1,5 @@
-import Ipld
+import Ipld.Multibase
+import Ipld.Keccak
 
 open Multibase
 open Keccak

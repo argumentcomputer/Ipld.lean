@@ -47,6 +47,7 @@
         inherit project test;
         packages = {
           ${name} = project.executable;
+          test = test.executable;
         };
 
         checks.test = test.executable;
