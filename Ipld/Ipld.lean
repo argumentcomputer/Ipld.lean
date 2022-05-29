@@ -5,25 +5,25 @@ import Std.Data.RBTree
 
 open Std (RBNode)
 
-def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
+def mapToList (map : RBNode α (fun _ => β)) : List (α × β) :=
   map.revFold (fun as a b => (a,b)::as) []
 
 instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
-  beq a b := toList a == toList b
+  beq a b := mapToList a == mapToList b
 
 instance : BEq Cid where
   beq a b := a.version == b.version && a.codec == b.codec && a.hash == b.hash
 
 inductive Ipld where
-| null
-| bool (b : Bool)
-| number (n : UInt64)
-| string (s : String)
-| bytes (b : ByteArray)
-| array (elems : Array Ipld)
-| object (kvPairs : RBNode String (fun _ => Ipld))
-| link (cid: Cid)
-deriving BEq, Inhabited
+  | null
+  | bool (b : Bool)
+  | number (n : UInt64)
+  | string (s : String)
+  | bytes (b : ByteArray)
+  | array (elems : Array Ipld)
+  | object (kvPairs : RBNode String (fun _ => Ipld))
+  | link (cid: Cid)
+  deriving BEq, Inhabited
 
 instance : Repr Ipld where
   reprPrec
@@ -36,7 +36,7 @@ instance : Repr Ipld where
   --| Ipld.array n, prec => Repr.addAppParen ("Ipld.array " ++ reprPrec n.data prec) prec
   | _, prec => Repr.addAppParen ("Ipld.todo") prec
 
---def Ipld.toStringAux : Ipld -> String
+--def Ipld.toStringAux : Ipld → String
 --| Ipld.null =>  "Ipld.null" 
 --| Ipld.bool b  =>  "Ipld.bool " ++ toString b 
 --| Ipld.number n  =>  "Ipld.number " ++ toString n 
@@ -47,13 +47,7 @@ instance : Repr Ipld where
 --
 --instance : ToString Ipld where
 --   toString := Ipld.toStringAux
-namespace Ipld
 
-def mkObject (o : List (String × Ipld)) : Ipld :=
-  object <| Id.run <| do
-    let mut kvPairs := RBNode.leaf
-    for (k, v) in o do
-      kvPairs := kvPairs.insert compare k v
-    kvPairs
-
-end Ipld
+def Ipld.mkObject (o : List (String × Ipld)) : Ipld :=
+  object $ o.foldl (init := RBNode.leaf)
+    fun acc (k, v) => acc.insert compare k v
