@@ -24,7 +24,5 @@ def cases : List Case :=
   , Case.mk 16384 { data := #[0b10000000, 0b10000000, 0b000000001] }
   ]
 
-open LSpec in
 def main := lspec "UnsignedVarInt works properly" $
-  it "converts Nat ↔ UnsignedVarInt properly" (findFailing cases) isEmptyList $
-  done
+  it "converts Nat ↔ UnsignedVarInt properly" (findFailing cases) shouldBeEmpty

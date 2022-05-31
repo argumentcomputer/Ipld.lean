@@ -31,7 +31,5 @@ def cases : List Case := List.catOptions
   , mkCase "4c44254356730838195a32cbb1b8be3bed4c6c05c0" "f14403dc43b479f5e9e008a5256ca442e66286995c39deb732a6fb4e2e791a3c4a6a6e5322e571e945a78748896edc67866ab00c767320f6956833857eab991a73a77"
   ]
 
-open LSpec in
 def main := lspec "Multibase works properly" $
-  it "decodes multihashes" (findFailing cases) isEmptyList $
-  done
+  it "decodes multihashes" (findFailing cases) shouldBeEmpty

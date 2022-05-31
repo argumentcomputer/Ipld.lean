@@ -252,20 +252,9 @@ def cases : List Case :=
 
 end RFC4648
 
-open LSpec in
 def main := lspec "Multibase works properly" $
-  it "encodes \"yes mani !\"" (findFailing Basic.cases) isEmptyList $
-  it "encodes \"hello world\"" (findFailing CaseInsensitivity.cases) isEmptyList $
-  it "encodes \"\\x00yes mani !\"" (findFailing LeadingZero.cases) isEmptyList $
-  it "encodes \"\\x00\\x00yes mani !\"" (findFailing TwoLeadingZeros.cases) isEmptyList $
-  it "encodes vectors" (findFailing RFC4648.cases) isEmptyList $
--- what?!
--- application type mismatch
---   it "encodes vectors" (findFailing RFC4648.cases)
--- argument
---   findFailing RFC4648.cases
--- has type
---   List Case : Type 1
--- but is expected to have type
---   List ?m.1952 : Type
-  done
+  it "encodes \"yes mani !\"" (findFailing Basic.cases) shouldBeEmpty $
+  it "encodes \"hello world\"" (findFailing CaseInsensitivity.cases) shouldBeEmpty $
+  it "encodes \"\\x00yes mani !\"" (findFailing LeadingZero.cases) shouldBeEmpty $
+  it "encodes \"\\x00\\x00yes mani !\"" (findFailing TwoLeadingZeros.cases) shouldBeEmpty $
+  it "encodes vectors" (findFailing RFC4648.cases) shouldBeEmpty
