@@ -6,6 +6,6 @@ package Ipld {
   defaultFacet := PackageFacet.oleans
   dependencies := #[{
     name := `LSpec
-    src := Source.git "https://github.com/yatima-inc/LSpec.git" "7525505db2172f6ee48e0e890eab46907cf3d9f6"
+    src := Source.git "https://github.com/yatima-inc/LSpec.git" "a11e09c75ca02d9e43ab280417b67e7a30fccee5"
   }]
 }
