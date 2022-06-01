@@ -1,8 +1,6 @@
 import Ipld.Utils
 import Ipld.MultibaseImpl
 
-import LSpec.Meta
-
 /-- An instance of the Multibase specification for a given base `β` -/
 class Multibase (β: Type) where
   code    : Char
