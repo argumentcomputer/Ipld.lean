@@ -70,7 +70,7 @@ def compareAux {α : Type u} [inst: Ord α] : List α → List α → Ordering
   | [], [] => Ordering.eq
   | [], _ => Ordering.lt
   | _, [] => Ordering.gt
-  | x::xs, y::ys => match @compare α inst x y with
+  | x::xs, y::ys => match compare x y with
     | Ordering.eq => compareAux xs ys
     | other => other
 
@@ -88,7 +88,7 @@ def catOptions {α : Type u} : List (Option α) → List α := mapOption id
 
 def indexOf [BEq α] (as : List α) (a : α) : Option Nat :=
   let rec aux (a : α) (i : Nat) : List α → Option Nat
-    | a' :: as' => if a == a' then (some i) else aux a (i + 1) as'
+    | a' :: as' => if a == a' then some i else aux a (i + 1) as'
     | []        => none
   aux a 0 as
 
@@ -107,28 +107,28 @@ namespace ByteArray
 def asLEtoNat (b: ByteArray) : Nat := Id.run do
   let mut x := 0
   for i in [:b.size] do
-    x := x + Nat.shiftLeft (UInt8.toNat b.data[i]) (i * 8)
+    x := x + b.data[i].toNat.shiftLeft (i * 8)
   return x
 
 /-- Read Nat from Big-Endian ByteArray -/
 def asBEtoNat (b : ByteArray) : Nat := Id.run do
   let mut x := 0
   for i in [:b.size] do
-    x := Nat.shiftLeft x 8 + (UInt8.toNat b.data[i])
+    x := Nat.shiftLeft x 8 + b.data[i].toNat
   return x
 
 def leadingZeroBits (bytes : ByteArray) : Nat := Id.run do
   let mut c := 0
   for byte in bytes do
-    let zs := (8 - Nat.sigBits (UInt8.toNat byte))
+    let zs := 8 - byte.toNat.sigBits
     if byte != 0
     then return c + zs
     else c := c + zs
   return c
 
 def pushZeros (bytes : ByteArray): Nat → ByteArray
-  | 0 => bytes
-  | n+1 => pushZeros (bytes.push 0) n
+  | 0     => bytes
+  | n + 1 => pushZeros (bytes.push 0) n
 
 instance : Ord ByteArray where
   compare x y := compare x.data y.data
@@ -141,7 +141,7 @@ def Subarray.asBA (s : Subarray UInt8) : ByteArray :=
 namespace RBNode
 
 @[specialize] def toList (map : RBNode α (fun _ => β)) : List (α × β) :=
-  map.revFold (fun as a b => (a,b)::as) []
+  map.revFold (fun as a b => (a, b) :: as) []
 
 instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
   beq a b := RBNode.toList a == RBNode.toList b

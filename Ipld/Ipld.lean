@@ -5,15 +5,6 @@ import Std.Data.RBTree
 
 open Std (RBNode)
 
-def mapToList (map : RBNode α (fun _ => β)) : List (α × β) :=
-  map.revFold (fun as a b => (a,b)::as) []
-
-instance [BEq α] [BEq β] : BEq (RBNode α fun _ => β) where
-  beq a b := mapToList a == mapToList b
-
-instance : BEq Cid where
-  beq a b := a.version == b.version && a.codec == b.codec && a.hash == b.hash
-
 inductive Ipld where
   | null
   | bool (b : Bool)
@@ -25,28 +16,23 @@ inductive Ipld where
   | link (cid: Cid)
   deriving BEq, Inhabited
 
-instance : Repr Ipld where
-  reprPrec
-  | Ipld.null, prec => Repr.addAppParen ("Ipld.null") prec
-  | Ipld.bool b, prec => Repr.addAppParen ("Ipld.bool " ++ toString b) prec
-  | Ipld.number n, prec => Repr.addAppParen ("Ipld.number " ++ toString n) prec
-  | Ipld.string n, prec => Repr.addAppParen ("Ipld.string " ++ toString n) prec
-  | Ipld.bytes n, prec => Repr.addAppParen ("Ipld.bytes " ++ toString n) prec
-  | Ipld.link n, prec => Repr.addAppParen ("Ipld.link " ++ toString n) prec
-  --| Ipld.array n, prec => Repr.addAppParen ("Ipld.array " ++ reprPrec n.data prec) prec
-  | _, prec => Repr.addAppParen ("Ipld.todo") prec
+partial def Ipld.toString : Ipld → String
+  | .null     => "Ipld.null"
+  | .bool   b => s!"(Ipld.bool {b})"
+  | .number n => s!"(Ipld.number {n})"
+  | .string s => s!"(Ipld.string {s})"
+  | .bytes  b => s!"(Ipld.bytes {b})"
+  | .link cid => s!"(Ipld.link {cid})"
+  | .array as => s!"(Ipld.array {as.map toString})"
+  | .object o =>
+    let s := o.fold (init := []) fun acc s i => (s, toString i) :: acc
+    s!"(Ipld.object {s.reverse})"
 
---def Ipld.toStringAux : Ipld → String
---| Ipld.null =>  "Ipld.null" 
---| Ipld.bool b  =>  "Ipld.bool " ++ toString b 
---| Ipld.number n  =>  "Ipld.number " ++ toString n 
---| Ipld.string n  =>  "Ipld.string " ++ toString n 
---| Ipld.byte n  =>  "Ipld.byte " ++ toString n 
-----| Ipld.array n  =>  "Ipld.array " ++ n.data
---| _  =>  "Ipld.todo" 
---
---instance : ToString Ipld where
---   toString := Ipld.toStringAux
+instance : ToString Ipld where
+  toString := Ipld.toString
+
+instance : Repr Ipld where
+  reprPrec := fun i prec => Repr.addAppParen i.toString prec
 
 def Ipld.mkObject (o : List (String × Ipld)) : Ipld :=
   object $ o.foldl (init := RBNode.leaf)

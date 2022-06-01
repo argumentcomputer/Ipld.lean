@@ -86,8 +86,8 @@ def encode [Multibase β] (x: List UInt8): String :=
     then x ++ List.replicate bytePad 0         -- push right zero byte pad
     else x                                     -- else, do nothing
   let n := Nat.fromByteListBE x                -- convert bytes to big number
-  let str := (toStringCore β "" (n+1) n)       -- core conversion loop
-  let charPad := ((bytePad * 8) / log)         -- the pad size in characters
+  let str := toStringCore β "" (n+1) n         -- core conversion loop
+  let charPad := (bytePad * 8) / log           -- the pad size in characters
   let str' := if rfc                           -- in RFC4648
     then str.dropRight charPad                 -- drop the character pad size
     else str                                   -- else, do nothing

@@ -171,7 +171,8 @@ def read_u64: Deserializer UInt64 := do
   let bytes ← take 8
   return bytes.asBEtoNat.toUInt64
 
-def read_bytes (len: Nat) : Deserializer ByteArray := take len
+def read_bytes (len: Nat) : Deserializer ByteArray :=
+  take len
 
 def read_str (len: Nat) : Deserializer String := do
   let bytes ← take len
@@ -218,59 +219,59 @@ def decode_string : Deserializer String := do
   else throw (DeserializeError.UnexpectedCborCode major.toNat)
 
 partial def deserialize_ipld : Deserializer Ipld := do
-let major ← read_u8
-match major with
-| 0x18 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
-| 0x19 => Ipld.number <$> UInt16.toUInt64 <$> read_u16
-| 0x1a => Ipld.number <$> UInt32.toUInt64 <$> read_u32
-| 0x1b => Ipld.number <$> read_u64
--- Negative
--- | 0x38 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
--- | 0x39 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
--- | 0x3a => Ipld.number <$> UInt8.toUInt64 <$> read_u8
--- | 0x3b => Ipld.number <$> UInt8.toUInt64 <$> read_u8
--- Major type 4: array
-| 0x9f => Ipld.array <$> Array.mk <$> repeat_il deserialize_ipld
--- StringMap
--- Major type 5: map of pairs
-| 0xbf => do
-  let list ← repeat_il ((·,·) <$> decode_string <*> deserialize_ipld)
-  return Ipld.mkObject list
--- Major type 6: tag
-| 0xd8 => do 
-  let tag ← read_u8
-  if tag == 42 then Ipld.link <$> read_link
-  else throw (DeserializeError.UnknownCborTag tag)
-| 0xf4 => return Ipld.bool false
-| 0xf5 => return Ipld.bool true
-| 0xf6 => return Ipld.null
-| 0xf7 => return Ipld.null
-| x => do
-  -- Major type 0: unsigned integer
-  if 0x00 <= x && x <= 0x17 then return (Ipld.number major.toUInt64)
-  -- Major type 1: negative integer
-  --if 0x20 <= x && x <= 0x37 then return (Ipld.number major.toUInt64)
-  -- Major type 2: byte string
-  if 0x40 <= x && x <= 0x5b then do
-    let len ← read_len (major.toNat - 0x40)
-    let bytes ← read_bytes len
-    return Ipld.bytes bytes
-  -- Major type 3: text string
-  if 0x60 <= x && x <= 0x7b then do
-    let len ← read_len (major.toNat - 0x60)
-    let str ← read_str len
-    return Ipld.string str
+  let major ← read_u8
+  match major with
+  | 0x18 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
+  | 0x19 => Ipld.number <$> UInt16.toUInt64 <$> read_u16
+  | 0x1a => Ipld.number <$> UInt32.toUInt64 <$> read_u32
+  | 0x1b => Ipld.number <$> read_u64
+  -- Negative
+  -- | 0x38 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
+  -- | 0x39 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
+  -- | 0x3a => Ipld.number <$> UInt8.toUInt64 <$> read_u8
+  -- | 0x3b => Ipld.number <$> UInt8.toUInt64 <$> read_u8
   -- Major type 4: array
-  if 0x80 <= x && x <= 0x9b then do
-    let len ← read_len (major.toNat - 0x80)
-    let arr ← repeat_for len deserialize_ipld
-    return Ipld.array (Array.mk arr)
-  -- Major type 5: map
-  if 0xa0 <= x && x <= 0xbb then do
-    let len ← read_len (major.toNat - 0xa0)
-    let list ← repeat_for len ((·,·) <$> decode_string <*> deserialize_ipld)
+  | 0x9f => Ipld.array <$> Array.mk <$> repeat_il deserialize_ipld
+  -- StringMap
+  -- Major type 5: map of pairs
+  | 0xbf =>
+    let list ← repeat_il ((·,·) <$> decode_string <*> deserialize_ipld)
     return Ipld.mkObject list
-  throw (DeserializeError.UnknownCborTag major)
+  -- Major type 6: tag
+  | 0xd8 =>
+    let tag ← read_u8
+    if tag == 42 then Ipld.link <$> read_link
+    else throw (DeserializeError.UnknownCborTag tag)
+  | 0xf4 => return Ipld.bool false
+  | 0xf5 => return Ipld.bool true
+  | 0xf6 => return Ipld.null
+  | 0xf7 => return Ipld.null
+  | x =>
+    -- Major type 0: unsigned integer
+    if 0x00 <= x && x <= 0x17 then return (Ipld.number major.toUInt64)
+    -- Major type 1: negative integer
+    --if 0x20 <= x && x <= 0x37 then return (Ipld.number major.toUInt64)
+    -- Major type 2: byte string
+    if 0x40 <= x && x <= 0x5b then
+      let len ← read_len (major.toNat - 0x40)
+      let bytes ← read_bytes len
+      return Ipld.bytes bytes
+    -- Major type 3: text string
+    if 0x60 <= x && x <= 0x7b then
+      let len ← read_len (major.toNat - 0x60)
+      let str ← read_str len
+      return Ipld.string str
+    -- Major type 4: array
+    if 0x80 <= x && x <= 0x9b then
+      let len ← read_len (major.toNat - 0x80)
+      let arr ← repeat_for len deserialize_ipld
+      return Ipld.array (Array.mk arr)
+    -- Major type 5: map
+    if 0xa0 <= x && x <= 0xbb then
+      let len ← read_len (major.toNat - 0xa0)
+      let list ← repeat_for len ((·,·) <$> decode_string <*> deserialize_ipld)
+      return Ipld.mkObject list
+    throw (DeserializeError.UnknownCborTag major)
 
 partial def deserialize (x: ByteArray) : Except DeserializeError Ipld :=
   match EStateM.run deserialize_ipld (ByteCursor.mk x 0) with
