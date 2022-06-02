@@ -36,7 +36,7 @@ constant base64urlTable: String :=
 def digitBase2 : Nat → Char
 | 0 => '0'
 | 1 => '1'
-| _   => '0'
+| _ => '0'
 
 def readBase2 : Char → Option Nat
 | '0' => some 0
