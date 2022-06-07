@@ -19,11 +19,15 @@ def toString (self: Cid) : String :=
 instance : ToString Cid where
   toString := toString
 
-def fromBytes (bytes : ByteArray) : Option Cid :=
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (version, bytes) =>
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (codec, bytes) =>
-  Option.bind (Multihash.fromBytes bytes) $ fun hash =>
+def fromBytes (bytes : ByteArray) : Option Cid := do
+  let (version, bytes) <- UnsignedVarInt.fromVarInt bytes;
+  let (codec, bytes) <- UnsignedVarInt.fromVarInt bytes;
+  let hash <- Multihash.fromBytes bytes;
   some { version, codec, hash }
+
+def fromString [Multibase β] (string: String) : Option Cid := do
+  let bytes <- Multibase.decodeBytes β string;
+  fromBytes bytes
 
 instance : Ord Cid where
   compare x y := compare (toBytes x) (toBytes y)
