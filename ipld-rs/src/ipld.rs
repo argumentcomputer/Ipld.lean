@@ -22,7 +22,7 @@ pub enum Ipld {
   Array(Vec<Ipld>),
   /// Represents a map of strings.
   Map(BTreeMap<String, Ipld>),
-  /// Represents a map of integers.
+  /// Represents a link.
   Link(Cid),
 }
 
