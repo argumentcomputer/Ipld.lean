@@ -4,7 +4,7 @@ use sha3::{Digest, Sha3_256, Sha3_512};
 use std::fmt;
 //use std:error::Error;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Multihash {
   code: u64,
   size: u64,

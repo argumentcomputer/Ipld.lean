@@ -3,7 +3,7 @@ use crate::unsigned_varint::{to_varint, from_varint};
 
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Cid {
   version: u64,
   codec: u64,
