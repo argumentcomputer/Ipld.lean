@@ -1,8 +1,11 @@
 use std::convert::TryFrom;
 
+// TODO: rewrite with bitvec
+// TODO: rewrite with iterators
+
 pub fn to_varint(mut y: u64) -> Vec<u8> {
   let mut result: Vec<u8> = vec![];
-  for _ in (0..(y+1)).rev() {
+  while y >= 0 {
     let b: u8 = u8::try_from(y % 128).unwrap();
     y = y / 128;
     if y == 0 {
@@ -16,7 +19,31 @@ pub fn to_varint(mut y: u64) -> Vec<u8> {
   result
 }
 
-// TODO
-pub fn from_varint(_bytes: &Vec<u8>) -> Result<u64, ()> {
-  Ok(0)
+pub fn from_varint(bytes: &Vec<u8>) -> Result<u64, ()> {
+  if bytes.len() == 0 {
+    return Err(());
+  }
+  let mut result: u64 = 0;
+  for i in 0..bytes.len() {
+    let b = (bytes[i] as u64 % 128) << (i * 7);
+    if bytes[i] / 128 == 0 {
+      result += b as u64;
+      break;
+    }
+    else {
+      result += b as u64;
+    }
+  }
+  Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::unsigned_varint::{to_varint, from_varint};
+
+  #[test]
+  fn varint_test() {
+    assert_eq!(from_varint(&vec![160, 141, 6]).unwrap(), 100000);
+  }
+  
 }
