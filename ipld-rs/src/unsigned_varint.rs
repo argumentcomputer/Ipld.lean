@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 
 pub fn to_varint(mut y: u64) -> Vec<u8> {
   let mut result: Vec<u8> = vec![];
-  while y >= 0 {
+  loop {
     let b: u8 = u8::try_from(y % 128).unwrap();
     y = y / 128;
     if y == 0 {

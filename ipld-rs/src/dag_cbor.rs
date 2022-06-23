@@ -1,17 +1,18 @@
 use std::collections::BTreeMap;
 
 use crate::cid::Cid;
+use crate::ipld::Ipld;
 
-pub fn serialize(ipld: Ipld) -> Vec<u8> {
+pub fn serialize(ipld: &Ipld) -> Vec<u8> {
   match ipld {
     Ipld::Null => ser_null(),
     Ipld::Bool(b) => ser_bool(b),
-    Ipld::Integer(i) => ser_u64(0, i),
-    Ipld::String(s) => ser_string(s),
-    Ipld::Bytes(b) => ser_bytes(b),
-    Ipld::Array(a) => ser_array(a),
-    Ipld::Map(m) => ser_map(m),
-    Ipld::Link(c) => ser_link(c),
+    Ipld::Integer(i) => ser_u64(0, *i),
+    Ipld::String(s) => ser_string(&s),
+    Ipld::Bytes(b) => ser_bytes(&b),
+    Ipld::Array(a) => ser_array(&a),
+    Ipld::Map(m) => ser_map(&m),
+    Ipld::Link(c) => ser_link(&c),
   }
 }
 
@@ -19,7 +20,7 @@ fn ser_null() -> Vec<u8> {
   vec![0xf6]
 }
 
-fn ser_bool(b: bool) -> Vec<u8> {
+fn ser_bool(b: &bool) -> Vec<u8> {
   match b {
     true => vec![0xf5],
     false => vec![0xf4],
@@ -69,7 +70,7 @@ fn ser_u64(major: u8, n: u64) -> Vec<u8> {
 }
 
 fn ser_string(s: &String) -> Vec<u8> {
-  let str_bytes = s.into_bytes();
+  let str_bytes = s.as_bytes();
   let mut result = ser_u64(3, str_bytes.len() as u64);
   result.extend(str_bytes);
   result
@@ -81,7 +82,7 @@ fn ser_bytes(b: &Vec<u8>) -> Vec<u8> {
   result
 }
 
-fn ser_link(l: Cid) -> Vec<u8> {
+fn ser_link(l: &Cid) -> Vec<u8> {
   let buf = l.to_bytes();
   let mut result = ser_u64(6, 42);
   result.extend(ser_u64(2, (buf.len() + 1) as u64));
@@ -90,7 +91,7 @@ fn ser_link(l: Cid) -> Vec<u8> {
   result
 }
 
-fn ser_array(a: Vec<Ipld>) -> Vec<u8> {
+fn ser_array(a: &Vec<Ipld>) -> Vec<u8> {
   let mut result = ser_u64(4, a.len() as u64);
   for ipld in a {
     result.extend(serialize(ipld));
@@ -98,8 +99,7 @@ fn ser_array(a: Vec<Ipld>) -> Vec<u8> {
   result
 }
 
-fn ser_map(m: BTreeMap<String, Ipld>) -> Vec<u8> {
-  // Convert Map into Vec of pairs
+fn ser_map(m: &BTreeMap<String, Ipld>) -> Vec<u8> {
   let mut result = ser_u64(5, m.len() as u64);
   for (key, val) in m.iter() {
     result.extend(ser_string(key));

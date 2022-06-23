@@ -1,56 +1,40 @@
-const base2Table: String = 
-  "01"
-const base8Table: String = 
-  "01234567"
-const base10Table: String = 
-  "0123456789"
-const base16Table: String = 
-  "0123456789abcdef"
-const base16upperTable: String = 
-  "0123456789ABCDEF"
-const base32Table: String = 
-  "abcdefghijklmnopqrstuvwxyz234567"
-const base32upperTable: String = 
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-const base32hexTable: String = 
-  "0123456789abcdefghijklmnopqrstuv"
-const base32hexupperTable: String = 
-  "0123456789ABCDEFGHIJKLMNOPQRSTUV"
-const base32zTable: String = 
-  "ybndrfg8ejkmcpqxot1uwisza345h769"
-const base36Table: String = 
-  "0123456789abcdefghijklmnopqrstuvwxyz"
-const base36upperTable: String = 
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const base58flickrTable: String = 
-  "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
-const base58btcTable: String =  
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-const base64Table: String =  
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-const base64urlTable: String =  
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+const BASE2_TABLE: &str = "01";
+const BASE8_TABLE: &str = "01234567";
+const BASE10_TABLE: &str = "0123456789";
+const BASE16_TABLE: &str = "0123456789abcdef";
+const BASE16UPPER_TABLE: &str = "0123456789ABCDEF";
+const BASE32_TABLE: &str = "abcdefghijklmnopqrstuvwxyz234567";
+const BASE32UPPER_TABLE: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const BASE32HEX_TABLE: &str = "0123456789abcdefghijklmnopqrstuv";
+const BASE32HEXUPPER_TABLE: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+const BASE32Z_TABLE: &str = "ybndrfg8ejkmcpqxot1uwisza345h769";
+const BASE36_TABLE: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
+const BASE36UPPER_TABLE: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const BASE58FLICKR_TABLE: &str = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+const BASE58BTC_TABLE: &str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE64_TABLE: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64URL_TABLE: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 // These functions should be generated from macros
 
-fn digitBase2(num: u64) -> char {
-  match num {
+fn digit_base2(val: u64) -> char {
+  match val {
     0 => '0',
     1 => '1',
     _ => '0',
   }
 }
 
-fn readBase2(c: char) -> Option<u64> {
-  match num {
+fn read_base2(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     _   => None,
   }
 }
 
-fn digitBase8(num: u64) -> char {
-  match num {
+fn digit_base8(val: u64) -> char {
+  match val {
     0 => '0',
     1 => '1',
     2 => '2',
@@ -63,8 +47,8 @@ fn digitBase8(num: u64) -> char {
   }
 }
 
-fn readBase8(c: char) -> Option<u64> {
-  match num {
+fn read_base8(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     '2' => Some(2),
@@ -77,8 +61,8 @@ fn readBase8(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase10(num: u64) -> char {
-  match num {
+fn digit_base10(val: u64) -> char {
+  match val {
     0 => '0',
     1 => '1',
     2 => '2',
@@ -93,8 +77,8 @@ fn digitBase10(num: u64) -> char {
   }
 }
 
-fn readBase10(c: char) -> Option<u64> {
-  match num {
+fn read_base10(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     '2' => Some(2),
@@ -109,8 +93,8 @@ fn readBase10(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase16(num: u64) -> char {
-  match num {
+fn digit_base16(val: u64) -> char {
+  match val {
     0 => '0',
     1 => '1',
     2 => '2',
@@ -131,8 +115,8 @@ fn digitBase16(num: u64) -> char {
   }
 }
 
-fn digitBase16Upper(num: u64) -> char {
-  match num {
+fn digit_base16upper(val: u64) -> char {
+  match val {
     0 => '0',
     1 => '1',
     2 => '2',
@@ -153,8 +137,8 @@ fn digitBase16Upper(num: u64) -> char {
   }
 }
 
-fn readBase16(c: char) -> Option<u64> {
-  match num {
+fn read_base16(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     '2' => Some(2),
@@ -181,8 +165,8 @@ fn readBase16(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase32Hex(num: u64) -> char {
-  match num {
+fn digit_base32hex(val: u64) -> char {
+  match val {
     0  => '0',
     1  => '1',
     2  => '2',
@@ -219,8 +203,8 @@ fn digitBase32Hex(num: u64) -> char {
   }
 }
 
-fn digitBase32HexUpper(num: u64) -> char {
-  match num {
+fn digit_base32hexupper(val: u64) -> char {
+  match val {
     0  => '0',
     1  => '1',
     2  => '2',
@@ -257,8 +241,8 @@ fn digitBase32HexUpper(num: u64) -> char {
   }
 }
 
-fn readBase32Hex(num: char) -> Option<u64> {
-  match num {
+fn read_base32hex(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     '2' => Some(2),
@@ -317,8 +301,8 @@ fn readBase32Hex(num: char) -> Option<u64> {
   }
 }
 
-fn digitBase32(num: u64) -> char {
-  match num {
+fn digit_base32(val: u64) -> char {
+  match val {
     0  => 'a',
     1  => 'b',
     2  => 'c',
@@ -355,8 +339,8 @@ fn digitBase32(num: u64) -> char {
   }
 }
 
-fn digitBase32Upper(num: u64) -> char {
-  match num {
+fn digit_base32upper(val: u64) -> char {
+  match val {
     0  => 'A',
     1  => 'B',
     2  => 'C',
@@ -394,8 +378,8 @@ fn digitBase32Upper(num: u64) -> char {
 }
 
 
-fn readBase32(c: char) -> Option<u64> {
-  match num {
+fn read_base32(val: char) -> Option<u64> {
+  match val {
     'a' => Some(0),
     'b' => Some(1),
     'c' => Some(2),
@@ -458,8 +442,8 @@ fn readBase32(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase32Z(num: u64) -> char {
-  match num {
+fn digit_base32z(val: u64) -> char {
+  match val {
     0  => 'y',
     1  => 'b',
     2  => 'n',
@@ -496,8 +480,8 @@ fn digitBase32Z(num: u64) -> char {
   }
 }
 
-fn readBase32Z(c: char) -> Option<u64> {
-  match num {
+fn read_base32z(val: char) -> Option<u64> {
+  match val {
     'y' => Some(0),
     'b' => Some(1),
     'n' => Some(2),
@@ -534,8 +518,8 @@ fn readBase32Z(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase36(num: u64) -> char {
-  match num {
+fn digit_base36(val: u64) -> char {
+  match val {
     0  => '0',
     1  => '1',
     2  => '2',
@@ -576,8 +560,8 @@ fn digitBase36(num: u64) -> char {
   }
 }
 
-fn digitBase36Upper(num: u64) -> char {
-  match num {
+fn digit_base36upper(val: u64) -> char {
+  match val {
     0  => '0',
     1  => '1',
     2  => '2',
@@ -618,8 +602,8 @@ fn digitBase36Upper(num: u64) -> char {
   }
 }
 
-fn readBase36(c: char) -> Option<u64> {
-  match num {
+fn read_base36(val: char) -> Option<u64> {
+  match val {
     '0' => Some(0),
     '1' => Some(1),
     '2' => Some(2),
@@ -686,8 +670,8 @@ fn readBase36(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase58Flickr(num: u64) -> char {
-  match num {
+fn digit_base58flickr(val: u64) -> char {
+  match val {
     0  => '1',
     1  => '2',
     2  => '3',
@@ -750,8 +734,8 @@ fn digitBase58Flickr(num: u64) -> char {
   }
 }
 
-fn readBase58Flickr(c: char) -> Option<u64> {
-  match num {
+fn read_base58flickr(val: char) -> Option<u64> {
+  match val {
     '1' => Some(0),
     '2' => Some(1),
     '3' => Some(2),
@@ -814,8 +798,8 @@ fn readBase58Flickr(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase58BTC(num: u64) -> char {
-  match num {
+fn digit_base58btc(val: u64) -> char {
+  match val {
     0  => '1',
     1  => '2',
     2  => '3',
@@ -878,8 +862,8 @@ fn digitBase58BTC(num: u64) -> char {
   }
 }
 
-fn readBase58BTC(c: char) -> Option<u64> {
-  match num {
+fn read_base58btc(val: char) -> Option<u64> {
+  match val {
     '1' => Some(0),
     '2' => Some(1),
     '3' => Some(2),
@@ -942,8 +926,8 @@ fn readBase58BTC(c: char) -> Option<u64> {
   }
 }
     
-fn digitBase64(num: u64) -> char {
-  match num {
+fn digit_base64(val: u64) -> char {
+  match val {
     0  => 'A',
     1  => 'B',
     2  => 'C',
@@ -1012,8 +996,8 @@ fn digitBase64(num: u64) -> char {
   }
 }
 
-fn readBase64(c: char) -> Option<u64> {
-  match num {
+fn read_base64(val: char) -> Option<u64> {
+  match val {
     'A' => Some(0),
     'B' => Some(1),
     'C' => Some(2),
@@ -1082,8 +1066,8 @@ fn readBase64(c: char) -> Option<u64> {
   }
 }
 
-fn digitBase64URL(num: u64) -> char {
-  match num {
+fn digit_base64url(val: u64) -> char {
+  match val {
     0  => 'A',
     1  => 'B',
     2  => 'C',
@@ -1152,8 +1136,8 @@ fn digitBase64URL(num: u64) -> char {
   }
 }
 
-fn readBase64URL(c: char) -> Option(u64) {
-  match num {
+fn read_base64url(val: char) -> Option<u64> {
+  match val {
     'A' => Some(0),
     'B' => Some(1),
     'C' => Some(2),

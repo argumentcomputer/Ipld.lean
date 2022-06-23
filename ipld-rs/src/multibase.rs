@@ -1,12 +1,8 @@
-use crate::multibase_impl;
-
-
-// To create a Multibase trait, each of the following functions would be
-// required by any instance
+//use crate::multibase_impl;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Multibase {
-  base: 
+  base: String,
   code: char,
   alpha: String,
   rfc4648: bool,
@@ -14,21 +10,20 @@ pub struct Multibase {
 }
 
 impl Multibase {
+
   // Is this function useful in Rust? 
-  pub fn digit(&self, d: u64) -> char {
-    
-  }
+  //pub fn digit(&self, d: u64) -> char {}
 
-  pub fn read(&self, c: char) -> Option<u64> {}
+  //pub fn read(&self, c: char) -> Option<u64> {}
 
-  // Return the first Unicode scalar value in the string
+  // Return the first scalar value in the string
   fn zero(&self) -> char {
-    self.alpha.chars().next()
+    self.alpha.chars().next().unwrap()
   }
 
   // Return the number of scalar values in the string
   fn base(&self) -> u64 {
-    self.alpha.chars().count()
+    self.alpha.chars().count() as u64
   }
 
   fn log2_base(&self) -> u64 {
