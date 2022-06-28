@@ -25,4 +25,4 @@ def cases : List Case :=
   ]
 
 def main := lspec do 
-  test  "UnsignedVarInt works properly" (findFailing cases).isEmpty
+  test  "converts `Nat` ↔ `UnsignedVarInt` properly" (findFailing cases).isEmpty

@@ -32,4 +32,4 @@ def cases : List Case := List.catOptions
   ]
 
 def main := lspec do 
-  test "Multibase works properly" (findFailing cases).isEmpty
+  test "decodes multihashes properly" (findFailing cases).isEmpty

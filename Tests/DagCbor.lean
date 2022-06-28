@@ -42,4 +42,4 @@ def cases : List Case :=
   ]
 
 def main := lspec do 
-  test "DagCbor works properly" (findFailing cases).isEmpty
+  test "serializes and deserializes IPLD types properly" (findFailing cases).isEmpty
