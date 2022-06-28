@@ -1,6 +1,4 @@
 import Ipld.Ipld
-import Ipld.Multihash
-import Std.Data.RBTree
 
 namespace DagCbor
 

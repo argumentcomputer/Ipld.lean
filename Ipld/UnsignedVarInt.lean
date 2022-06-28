@@ -1,5 +1,3 @@
-import Ipld.Utils
-
 namespace UnsignedVarInt
 
 def toVarIntCore : Nat → Nat → List UInt8

@@ -17,7 +17,7 @@ def findFailing (cases: List Case) : List Case :=
   List.filter (fun x => not (testCase x)) cases
 
 def mkCase (input: String) (hash: String) : Option Case := do
-  let input ← input.toUTF8
+  let input ← some input.toUTF8
   let hash  ← ByteArray.mk <$> Array.mk <$> Multibase.decode Multibase.Base16 hash
   let hash  ← fromBytes hash
   return Case.mk input hash
