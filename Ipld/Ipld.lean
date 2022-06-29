@@ -1,7 +1,8 @@
 import Ipld.Cid
 import Ipld.Multihash
-import Ipld.Utils
 import Std.Data.RBTree
+
+import YatimaStdLib
 
 open Std (RBNode)
 

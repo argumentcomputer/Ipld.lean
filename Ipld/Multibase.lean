@@ -1,5 +1,6 @@
-import Ipld.Utils
 import Ipld.MultibaseImpl
+
+import YatimaStdLib
 
 /-- An instance of the Multibase specification for a given base `β` -/
 class Multibase (β: Type) where
@@ -106,11 +107,10 @@ def fromStringCore [Multibase β]: Nat → Nat → String → Option (Nat × Nat
   | 0, acc, input => Option.some (0, acc)
   | fuel+1, acc, "" => Option.some (0, acc)
   | fuel+1, acc, input =>
-    let c := input[0]
-    if some c == '='
+    if input[0] == '='
     then (fromPad β (fuel + 1) 0 acc input)
     else Option.bind (read β input[0]) (fun d =>
-      fromStringCore fuel (acc * (base β) + d) (String.drop input 1))
+      fromStringCore fuel (acc * (base β) + d) (input.drop 1))
 
 def fromString [m: Multibase β]: String → Option (List UInt8)
   | "" => some []
