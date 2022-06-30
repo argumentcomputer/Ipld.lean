@@ -13,7 +13,7 @@ pub enum Ipld {
     /// Represents a boolean value.
     Bool(bool),
     /// Represents an integer.
-    Integer(u64),
+    Number(u64),
     /// Represents an UTF-8 string.
     String(String),
     /// Represents a sequence of bytes.
@@ -21,7 +21,7 @@ pub enum Ipld {
     /// Represents a list.
     Array(Vec<Ipld>),
     /// Represents a map of strings.
-    Map(BTreeMap<String, Ipld>),
+    Object(BTreeMap<String, Ipld>),
     /// Represents a link.
     Link(Cid),
 }
@@ -32,21 +32,21 @@ impl Ipld {
         for (k, v) in obs {
             res.insert(k, v);
         }
-        Ipld::Map(res)
+        Ipld::Object(res)
     }
 
     pub fn to_string(&self) -> String {
         match self {
             Ipld::Null => "Ipld.null".to_string(),
             Ipld::Bool(b) => format!("(Ipld.bool {b})"),
-            Ipld::Integer(n) => format!("(Ipld.number {n})"),
+            Ipld::Number(n) => format!("(Ipld.number {n})"),
             Ipld::String(s) => format!("(Ipld.string {s})"),
             Ipld::Bytes(b) => format!("(Ipld.bytes {:?})", b),
             Ipld::Array(obs) => {
                 let obs: Vec<String> = obs.into_iter().map(|x| x.to_string()).collect();
                 format!("(Ipld.array {:?})", obs)
             }
-            Ipld::Map(obs) => {
+            Ipld::Object(obs) => {
                 let obs = obs
                     .into_iter()
                     .map(|(s, ob)| (s.clone(), ob.to_string()))

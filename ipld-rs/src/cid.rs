@@ -3,6 +3,8 @@ use crate::unsigned_varint::{from_varint, to_varint};
 
 use std::fmt;
 
+pub const CID_SERDE_PRIVATE_IDENTIFIER: &str = "$__private__serde__identifier__for__cid";
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Cid {
     version: u64,

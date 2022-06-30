@@ -42,5 +42,6 @@ mod tests {
     #[test]
     fn varint_test() {
         assert_eq!(from_varint(&vec![160, 141, 6]).unwrap(), 100000);
+        assert_eq!(from_varint(to_varint(50)).unwrap(), 50);
     }
 }

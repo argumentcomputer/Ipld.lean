@@ -7,11 +7,11 @@ pub fn serialize(ipld: &Ipld) -> Vec<u8> {
     match ipld {
         Ipld::Null => ser_null(),
         Ipld::Bool(b) => ser_bool(b),
-        Ipld::Integer(i) => ser_u64(0, *i),
+        Ipld::Number(i) => ser_u64(0, *i),
         Ipld::String(s) => ser_string(&s),
         Ipld::Bytes(b) => ser_bytes(&b),
         Ipld::Array(a) => ser_array(&a),
-        Ipld::Map(m) => ser_map(&m),
+        Ipld::Object(o) => ser_object(&o),
         Ipld::Link(c) => ser_link(&c),
     }
 }
@@ -95,7 +95,7 @@ fn ser_array(a: &Vec<Ipld>) -> Vec<u8> {
     result
 }
 
-fn ser_map(m: &BTreeMap<String, Ipld>) -> Vec<u8> {
+fn ser_object(m: &BTreeMap<String, Ipld>) -> Vec<u8> {
     let mut result = ser_u64(5, m.len() as u64);
     for (key, val) in m.iter() {
         result.extend(ser_string(key));
@@ -103,3 +103,32 @@ fn ser_map(m: &BTreeMap<String, Ipld>) -> Vec<u8> {
     }
     result
 }
+
+//pub struct Deserializer;
+//
+//pub fn deserialize(bytes: Vec<u8>) {
+//  let mut deserializer = Deserializer::new();
+//  let major = read_u8();
+//  match major {
+//    0x18 => Ipld::Integer { read_u8(&mut deserializer) as u64 },
+//    0x19 => Ipld::Integer 
+//
+//  }
+//}
+//
+//fn read_u8(de: &mut Deserializer) {
+//
+//}
+//
+//fn read_u16() {
+//
+//}
+//
+//fn read_u32() {
+//
+//}
+//
+//fn read_u64() {
+//
+//}
+  
