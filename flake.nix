@@ -30,18 +30,15 @@
         name = "Ipld";  # must match the name of the top-level .lean file
         project = leanPkgs.buildLeanPackage {
           inherit name;
-          # deps = [ lean-ipld.project.${system} ];
           # Where the lean files are located
-          src = ./src;
+          src = ./.;
         };
         test = leanPkgs.buildLeanPackage {
           name = "Tests";
           deps = [ project ];
           # Where the lean files are located
-          src = ./test;
+          src = ./.;
         };
-        joinDepsDerivationns = getSubDrv:
-          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([ project ] ++ project.allExternalDeps));
       in
       {
         inherit project test;
@@ -58,8 +55,8 @@
           buildInputs = with pkgs; [
             leanPkgs.lean-dev
           ];
-          LEAN_PATH = "./src:./test:" + joinDepsDerivationns (d: d.modRoot);
-          LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivationns (d: d.src);
+          LEAN_PATH = "./src:./test";
+          LEAN_SRC_PATH = "./src:./test";
         };
       });
 }
