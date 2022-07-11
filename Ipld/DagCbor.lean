@@ -14,8 +14,8 @@ def ser_bool : Bool → ByteArray
 
 def ser_u8 (major : UInt8) (n : UInt8) : ByteArray :=
   if n <= 0x17
-  then ByteArray.mk #[((major.toNat.shiftLeft 5).lor n.toNat).toUInt8]
-  else ByteArray.mk #[((major.toNat.shiftLeft 5).lor 24).toUInt8, n]
+  then ⟨#[((major.toNat.shiftLeft 5).lor n.toNat).toUInt8]⟩
+  else ⟨#[((major.toNat.shiftLeft 5).lor 24).toUInt8, n]⟩
 
 def ser_u16 (major : UInt8) (n : UInt16) : ByteArray :=
   if n <= 255
@@ -117,28 +117,13 @@ def getPos (x: ByteCursor) : Nat := x.pos
 def setPos (x: ByteCursor) (i: Nat) : ByteCursor := 
   { bytes := x.bytes, pos := i}
 
-def Deserializer (α : Type): Type := EStateM DeserializeError ByteCursor α
-
-instance : Monad Deserializer where
-  bind     := EStateM.bind
-  pure     := EStateM.pure
-  map      := EStateM.map
-  seqRight := EStateM.seqRight
-
-instance : MonadStateOf ByteCursor Deserializer where
-  set       := EStateM.set
-  get       := EStateM.get
-  modifyGet := EStateM.modifyGet
-
-instance : MonadExceptOf DeserializeError Deserializer where
-  throw    := EStateM.throw
-  tryCatch := EStateM.tryCatch
+abbrev Deserializer (α) := EStateM DeserializeError ByteCursor α
 
 def next : Deserializer UInt8 := do
   let { bytes, pos } ← get
   if pos + 1 > bytes.size then throw DeserializeError.UnexpectedEOF
   set (ByteCursor.mk bytes (pos + 1))
-  return bytes[pos]
+  return bytes[pos]!
 
 def take (n: Nat) : Deserializer ByteArray := do
   let { bytes, pos } ← get
@@ -152,94 +137,93 @@ def tag (t: UInt8) : Deserializer UInt8 := do
   then return tag
   else throw (DeserializeError.ExpectedTag t tag)
 
-def alt {α : Type} (ds : List (Deserializer α)) : Deserializer α := do
+def alt (ds : List (Deserializer α)) : Deserializer α := do
   match ds with
-  | [] => throw DeserializeError.NoAlt
-  | c::cs => EStateM.orElse' c (alt cs)
+  | []      => throw DeserializeError.NoAlt
+  | c :: cs => EStateM.orElse' c (alt cs)
 
-def read_u8: Deserializer UInt8 := next
+def readU8 : Deserializer UInt8 := next
 
-def read_u16: Deserializer UInt16 := do
+def readU16 : Deserializer UInt16 := do
   let bytes ← take 2
   return bytes.asBEtoNat.toUInt16
 
-def read_u32: Deserializer UInt32 := do
+def readU32 : Deserializer UInt32 := do
   let bytes ← take 4
   return bytes.asBEtoNat.toUInt32
 
-def read_u64: Deserializer UInt64 := do
+def readU64 : Deserializer UInt64 := do
   let bytes ← take 8
   return bytes.asBEtoNat.toUInt64
 
-def read_bytes (len: Nat) : Deserializer ByteArray :=
+def readBytes (len: Nat) : Deserializer ByteArray :=
   take len
 
-def read_str (len: Nat) : Deserializer String := do
+def readString (len: Nat) : Deserializer String := do
   let bytes ← take len
   return String.fromUTF8Unchecked bytes
 
-def repeat_for {α : Type} (len : Nat) (d : Deserializer α) :
-    Deserializer (List α) := 
+def repeatFor (len : Nat) (d : Deserializer α) : Deserializer (List α) := 
   match len with
-  | 0 => return []
-  | n+1 => List.cons <$> d <*> repeat_for n d
+  | 0     => return []
+  | n + 1 => List.cons <$> d <*> repeatFor n d
 
-partial def repeat_il {α : Type} (d : Deserializer α) : Deserializer (List α) := do
+partial def repeatIl (d : Deserializer α) : Deserializer (List α) := do
   let {bytes, pos} ← get
-  if bytes[pos] == 0xff
-  then return []
-  else List.cons <$> d <*> (repeat_il d)
+  if bytes[pos]! == 0xff
+    then return []
+    else List.cons <$> d <*> (repeatIl d)
 
 def read_link : Deserializer Cid := do
-  let ty ← read_u8
+  let ty ← readU8
   if ty != 0x58 then throw (DeserializeError.UnknownCborTag ty)
-  let len ← read_u8
+  let len ← readU8
   if len == 0 then throw (DeserializeError.CidLenOutOfRange len)
-  let bytes ← (read_bytes len.toNat)
-  if bytes[0] != 0 then throw (DeserializeError.CidPrefix bytes[0])
+  let bytes ← (readBytes len.toNat)
+  if bytes[0]! != 0 then throw (DeserializeError.CidPrefix bytes[0]!)
   let bytes := bytes.extract 1 bytes.size
   let cid := Cid.fromBytes bytes
   match cid with
-  | Option.none => throw DeserializeError.CidRead
-  | Option.some x => return x
+  | none   => throw DeserializeError.CidRead
+  | some x => return x
 
 def read_len : Nat → Deserializer Nat
-| 0x18 => UInt8.toNat <$> read_u8
-| 0x19 => UInt16.toNat <$> read_u16
-| 0x1a => UInt32.toNat <$> read_u32
-| 0x1b => UInt64.toNat <$> read_u64
-| x => if x <= 0x17
-  then return x
-  else throw (DeserializeError.UnexpectedCborCode x)
+  | 0x18 => UInt8.toNat  <$> readU8
+  | 0x19 => UInt16.toNat <$> readU16
+  | 0x1a => UInt32.toNat <$> readU32
+  | 0x1b => UInt64.toNat <$> readU64
+  | x => if x <= 0x17
+    then return x
+    else throw (DeserializeError.UnexpectedCborCode x)
 
 def decode_string : Deserializer String := do
-  let major ← read_u8
+  let major ← readU8
   if 0x60 <= major && major <= 0x7b
-  then (read_len (major.toNat - 0x60)) >>= read_str
+  then (read_len (major.toNat - 0x60)) >>= readString
   else throw (DeserializeError.UnexpectedCborCode major.toNat)
 
 partial def deserialize_ipld : Deserializer Ipld := do
-  let major ← read_u8
+  let major ← readU8
   match major with
-  | 0x18 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
-  | 0x19 => Ipld.number <$> UInt16.toUInt64 <$> read_u16
-  | 0x1a => Ipld.number <$> UInt32.toUInt64 <$> read_u32
-  | 0x1b => Ipld.number <$> read_u64
+  | 0x18 => Ipld.number <$> UInt8.toUInt64  <$> readU8
+  | 0x19 => Ipld.number <$> UInt16.toUInt64 <$> readU16
+  | 0x1a => Ipld.number <$> UInt32.toUInt64 <$> readU32
+  | 0x1b => Ipld.number <$> readU64
   -- Negative
   -- | 0x38 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
   -- | 0x39 => Ipld.number <$> UInt8.toUInt64 <$> read_u8
   -- | 0x3a => Ipld.number <$> UInt8.toUInt64 <$> read_u8
   -- | 0x3b => Ipld.number <$> UInt8.toUInt64 <$> read_u8
   -- Major type 4: array
-  | 0x9f => Ipld.array <$> Array.mk <$> repeat_il deserialize_ipld
+  | 0x9f => Ipld.array <$> Array.mk <$> repeatIl deserialize_ipld
   -- StringMap
   -- Major type 5: map of pairs
   | 0xbf =>
-    let list ← repeat_il ((·,·) <$> decode_string <*> deserialize_ipld)
+    let list ← repeatIl ((·,·) <$> decode_string <*> deserialize_ipld)
     return Ipld.mkObject list
   -- Major type 6: tag
   | 0xd8 =>
-    let tag ← read_u8
+    let tag ← readU8
     if tag == 42 then Ipld.link <$> read_link
     else throw (DeserializeError.UnknownCborTag tag)
   | 0xf4 => return Ipld.bool false
@@ -254,26 +238,26 @@ partial def deserialize_ipld : Deserializer Ipld := do
     -- Major type 2: byte string
     if 0x40 <= x && x <= 0x5b then
       let len ← read_len (major.toNat - 0x40)
-      let bytes ← read_bytes len
+      let bytes ← readBytes len
       return Ipld.bytes bytes
     -- Major type 3: text string
     if 0x60 <= x && x <= 0x7b then
       let len ← read_len (major.toNat - 0x60)
-      let str ← read_str len
+      let str ← readString len
       return Ipld.string str
     -- Major type 4: array
     if 0x80 <= x && x <= 0x9b then
       let len ← read_len (major.toNat - 0x80)
-      let arr ← repeat_for len deserialize_ipld
+      let arr ← repeatFor len deserialize_ipld
       return Ipld.array (Array.mk arr)
     -- Major type 5: map
     if 0xa0 <= x && x <= 0xbb then
       let len ← read_len (major.toNat - 0xa0)
-      let list ← repeat_for len ((·,·) <$> decode_string <*> deserialize_ipld)
+      let list ← repeatFor len ((·,·) <$> decode_string <*> deserialize_ipld)
       return Ipld.mkObject list
     throw (DeserializeError.UnknownCborTag major)
 
-partial def deserialize (x: ByteArray) : Except DeserializeError Ipld :=
+def deserialize (x: ByteArray) : Except DeserializeError Ipld :=
   match EStateM.run deserialize_ipld (ByteCursor.mk x 0) with
   | EStateM.Result.ok x _ => Except.ok x
   | EStateM.Result.error e _ => Except.error e

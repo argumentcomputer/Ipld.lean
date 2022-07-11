@@ -6,8 +6,8 @@ def rotateLOnce (word : UInt64) : UInt64 :=
   (word <<< 1) ||| (word >>> 63)
 
 def rotateL : UInt64 → Nat → UInt64
-| word, 0 => word
-| word, n+1 => rotateL (rotateLOnce word) n
+  | word, n + 1 => (rotateLOnce word).rotateL n
+  | word, 0     => word
 
 end UInt64
 
@@ -89,24 +89,34 @@ def piConstants : Array Nat :=
 
 def theta (state : Array UInt64) : Array UInt64 :=
   let b : Array UInt64  := Array.mkArray 5 0
-  let c := Array.mapIdx b (λ i _ => UInt64.xor state[i*5] $ UInt64.xor state[i*5+1] $ UInt64.xor state[i*5+2] $ UInt64.xor state[i*5+3] state[i*5+4])
-  let d := Array.mapIdx b (λ i _ => (i, UInt64.xor c[Nat.mod (i + 4) 5] (UInt64.rotateL c[Nat.mod (i + 1) 5] 1)))
-  Array.concatMap (λ (i, e) => { data := [UInt64.xor e state[i*5], UInt64.xor e state[i*5+1], UInt64.xor e state[i*5+2], UInt64.xor e state[i*5+3], UInt64.xor e state[i*5+4]]}) d
+  let c := b.mapIdx fun i _ =>
+    state[i.val * 5]!.xor $
+      state[i.val * 5 + 1]!.xor $
+       state[i.val * 5 + 2]!.xor $
+        state[i.val * 5 + 3]!.xor state[i.val * 5 + 4]!
+  let d := b.mapIdx fun i _ => (i, c[Nat.mod (i + 4) 5]!.xor (c[Nat.mod (i + 1) 5]!.rotateL 1))
+  Array.concatMap (fun (i, e) =>
+    ⟨[e.xor state[i.val * 5]!,
+      e.xor state[i.val * 5 + 1]!,
+      e.xor state[i.val * 5 + 2]!,
+      e.xor state[i.val * 5 + 3]!,
+      e.xor state[i.val * 5 + 4]!]⟩) d
 
-def rho (state : Array UInt64) : Array UInt64 := Array.zipWith state rotationConstants UInt64.rotateL
+def rho (state : Array UInt64) : Array UInt64 :=
+  state.zipWith rotationConstants UInt64.rotateL
 
 def pi (state : Array UInt64) : Array UInt64 :=
-  Array.map (λ i => state[i]) piConstants
+  piConstants.map fun  i => state[i]!
 
 def chi (b : Array UInt64) : Array UInt64 :=
-  Array.mapIdx b (λ z el => UInt64.xor el (UInt64.land (UInt64.complement b[Nat.mod (z + 5) 25]) b[Nat.mod (z + 10) 25]))
+  Array.mapIdx b (λ z el => UInt64.xor el (UInt64.land (UInt64.complement b[Nat.mod (z + 5) 25]!) b[Nat.mod (z + 10) 25]!))
 
 def iota (roundNumber : Nat) (state : Array UInt64) : Array UInt64 :=
-  Array.modify state 0 (λ val => UInt64.xor roundConstants[roundNumber] val)
+  Array.modify state 0 (λ val => UInt64.xor roundConstants[roundNumber]! val)
 
 def keccakFAux : Nat → Nat → Array UInt64 → (Nat × Array UInt64)
-| 0, r, s => (r, s)
-| n+1, r, s => keccakFAux n (r+1) (iota r $ chi $ pi $ rho $ theta s)
+| 0,     r, s => (r, s)
+| n + 1, r, s => keccakFAux n (r + 1) (iota r $ chi $ pi $ rho $ theta s)
 
 def keccakF (state : Array UInt64) : Array UInt64 :=
   let (_, state') := keccakFAux rounds 0 state
@@ -116,12 +126,12 @@ def squeeze (rate : Nat) (l : Nat) (state : Array UInt64) : ByteArray :=
   let lanesToExtract := Nat.div l (Nat.div laneWidth 8)
   let threshold := Nat.div rate laneWidth
   let rec stateToBytes : Nat → Nat → Nat → Array UInt64 → List UInt64
-  | 0,      _,   _, _ => []
+  | 0,     _,    _, _ => []
   | n + 1, rate, x, s =>
     if x < threshold
-    then List.cons s[(Nat.div x 5) + (Nat.mod x 5) * 5] (stateToBytes n rate (x+1) s)
+    then List.cons s[(x / 5) + (x % 5) * 5]! (stateToBytes n rate (x + 1) s)
     else stateToBytes n rate 0 (keccakF s)
-  ByteArray.fromArrayUInt64LE { data := stateToBytes lanesToExtract threshold 0 state }
+  ByteArray.fromArrayUInt64LE ⟨stateToBytes lanesToExtract threshold 0 state⟩
 
 
 partial def absorbBlock (rate : Nat) (state : Array UInt64) (input : Array UInt64) : Array UInt64 :=
@@ -131,7 +141,7 @@ partial def absorbBlock (rate : Nat) (state : Array UInt64) (input : Array UInt6
     let threshold := Nat.div rate laneWidth
     let state' := Array.mapIdx state (λ z el =>
       if (Nat.div z 5) + 5*(Nat.mod z 5) < threshold
-      then UInt64.xor el input[(Nat.div z 5) + 5*(Nat.mod z 5)]
+      then UInt64.xor el input[(Nat.div z 5) + 5*(Nat.mod z 5)]!
       else el)
     let input := { data := List.drop (Nat.div rate 64) input.data }
     absorbBlock rate (keccakF state') input
@@ -148,7 +158,7 @@ def multiratePadding (bitrateBytes : Nat) (padByte : UInt8) (input : ByteArray) 
   let b : Array UInt64  := Array.mkArray totalLength 0
   {
     data := Array.mapIdx b (λ x _ =>
-      if x < msglen then input[x]
+      if x < msglen then input[x]!
       else if (Nat.succ x) == totalLength && padlen == 1 then 0x80 ||| padByte
       else if (Nat.succ x) == totalLength then 0x80
       else if x == msglen then padByte
