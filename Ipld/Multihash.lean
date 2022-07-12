@@ -16,18 +16,17 @@ namespace Multihash
 def toBytes (self : Multihash) : ByteArray :=
   (UnsignedVarInt.toVarInt self.code) ++ (UnsignedVarInt.toVarInt self.size) ++ self.digest
 
-def toString (self: Multihash) : String :=
-  Multibase.encode Multibase.Base64 (toBytes self).toList
+def toString (self : Multihash) : String :=
+  Base.b64.toMultibase.encode (toBytes self).toList
 
 instance : ToString Multihash where
   toString := toString
 
 def fromBytes (bytes : ByteArray) : Option Multihash :=
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (code, bytes) =>
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (size, bytes) =>
-  let digest := bytes
-  if digest.size > size then none
-  else some { code, size, digest }
+  (UnsignedVarInt.fromVarInt bytes).bind $ fun (code, bytes) =>
+    (UnsignedVarInt.fromVarInt bytes).bind $ fun (size, bytes) =>
+      if bytes.size > size then none
+      else some ⟨code, size, bytes⟩
 
 def sha3_256 (x: ByteArray) : Multihash :=
   { code := 0x16, size := 32, digest := Keccak.sha3_256 x }

@@ -14,16 +14,16 @@ def toBytes (self : Cid) : ByteArray :=
     ++ (Multihash.toBytes self.hash)
 
 def toString (self: Cid) : String :=
-  Multibase.encode Multibase.Base32 (toBytes self).toList
+  Base.b32.toMultibase.encode (toBytes self).toList
 
 instance : ToString Cid where
   toString := toString
 
 def fromBytes (bytes : ByteArray) : Option Cid :=
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (version, bytes) =>
-  Option.bind (UnsignedVarInt.fromVarInt bytes) $ fun (codec, bytes) =>
-  Option.bind (Multihash.fromBytes bytes) $ fun hash =>
-  some { version, codec, hash }
+  (UnsignedVarInt.fromVarInt bytes).bind $ fun (version, bytes) =>
+    (UnsignedVarInt.fromVarInt bytes).bind $ fun (codec, bytes) =>
+      (Multihash.fromBytes bytes).bind $ fun hash =>
+        some { version, codec, hash }
 
 instance : Ord Cid where
   compare x y := compare (toBytes x) (toBytes y)
