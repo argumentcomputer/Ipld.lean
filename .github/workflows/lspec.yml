@@ -16,7 +16,7 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
-      - name: build LSpec
-        run: lake build LSpec
+      - name: build LSpec binary
+        run: lake build lspec
       - name: run LSpec
         run: ./lean_packages/LSpec/build/bin/lspec
