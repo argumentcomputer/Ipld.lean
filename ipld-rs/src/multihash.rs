@@ -19,10 +19,10 @@ impl Multihash {
         code
     }
 
-    pub fn from_bytes(bytes: &mut Vec<u8>) -> Result<Multihash, ()> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Multihash, ()> {
         let code = from_varint(bytes)?;
         let size = from_varint(bytes)?;
-        let digest = bytes.clone();
+        let digest = bytes.to_vec();
         if digest.len() as u64 > size {
             panic!("Bad size");
         }
@@ -62,7 +62,7 @@ impl fmt::Display for Multihash {
 mod tests {
     use crate::multihash::Multihash;
 
-    #[ignore]
+  #[ignore]
     #[test]
     fn multihash_bytes_roundrip() {
         let data = vec![1];

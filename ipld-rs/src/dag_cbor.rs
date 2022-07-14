@@ -73,7 +73,7 @@ fn ser_string(s: &String) -> Vec<u8> {
 }
 
 fn ser_bytes(b: &Vec<u8>) -> Vec<u8> {
-    let mut result = ser_u64(2, (b.len() + 1) as u64);
+    let mut result = ser_u64(2, b.len() as u64);
     result.extend(b);
     result
 }
@@ -132,3 +132,34 @@ fn ser_object(m: &BTreeMap<String, Ipld>) -> Vec<u8> {
 //
 //}
   
+#[cfg(test)]
+mod tests {
+  use crate::dag_cbor::serialize;
+  use crate::ipld::Ipld;
+  use crate::cid::Cid;
+  use crate::multihash::Multihash;
+
+  #[test]
+  fn serialize_test() {
+    let ipld_null = Ipld::Null;
+    let ipld_bool = Ipld::Bool(true);
+    let ipld_number = Ipld::Number(0x17);
+    let ipld_number_big = Ipld::Number(0x10000);
+    let ipld_string = Ipld::String("Hello".into());
+    let ipld_bytes = Ipld::Bytes(vec![0, 8, 4, 0]);
+    let ipld_array = Ipld::Array(vec![Ipld::String("Hello".into())]);
+    let ipld_object = Ipld::to_object(vec![("Hello".into(), Ipld::String("World".into()))]);
+    let cid = Cid::new(1, 0x71, Multihash::sha3_256(&serialize(&ipld_null)));
+    let ipld_link = Ipld::Link(cid);
+    assert_eq!(serialize(&ipld_null), vec![0xf6]);
+    assert_eq!(serialize(&ipld_bool), vec![0xf5]);
+    assert_eq!(serialize(&ipld_number), vec![23]);
+    assert_eq!(serialize(&ipld_number_big), vec![0x1a, 0x00, 0x01, 0x00, 0x00]);
+    assert_eq!(serialize(&ipld_string), vec![101, 72, 101, 108, 108, 111]);
+    assert_eq!(serialize(&ipld_bytes), vec![68, 0, 8, 4, 0]);
+    assert_eq!(serialize(&ipld_array), vec![129, 101, 72, 101, 108, 108, 111]);
+    assert_eq!(serialize(&ipld_object), vec![161, 101, 72, 101, 108, 108, 111, 101, 87, 111, 114, 108, 100]);
+    assert_eq!(serialize(&ipld_link), vec![216, 42, 88, 37, 0, 1, 113, 22, 32, 69, 122, 165, 228, 28, 115, 252, 178, 178, 165, 119, 247, 73, 0, 207, 105, 172, 208, 72, 59, 220, 98, 86, 108, 23, 111, 21, 55, 76, 252, 185, 161]);
+  }
+
+}

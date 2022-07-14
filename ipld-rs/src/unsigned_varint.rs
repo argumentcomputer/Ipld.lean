@@ -18,7 +18,7 @@ pub fn to_varint(mut y: u64) -> Vec<u8> {
     result
 }
 
-pub fn from_varint(bytes: &Vec<u8>) -> Result<u64, ()> {
+pub fn from_varint(bytes: &[u8]) -> Result<u64, ()> {
     if bytes.len() == 0 {
         return Err(());
     }
@@ -42,6 +42,6 @@ mod tests {
     #[test]
     fn varint_test() {
         assert_eq!(from_varint(&vec![160, 141, 6]).unwrap(), 100000);
-        assert_eq!(from_varint(to_varint(50)).unwrap(), 50);
+      assert_eq!(from_varint(&to_varint(50)).unwrap(), 50);
     }
 }

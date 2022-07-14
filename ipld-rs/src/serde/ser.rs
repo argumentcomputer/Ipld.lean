@@ -1,15 +1,17 @@
 use crate::ipld::Ipld;
 use crate::cid::{Cid, CID_SERDE_PRIVATE_IDENTIFIER};
+use crate::serde::error::SerdeError;
+//use crate::SerdeError;
 
 use serde::{ser, Serialize};
 
-pub fn to_ipld<T>(value: T) -> Result<Ipld, ()>
+pub fn to_ipld<T>(value: T) -> Result<Ipld, SerdeError>
 where T: ser::Serialize {
   value.serialize(&Serializer)
 }
 
 impl ser::Serialize for Ipld {
-  fn serialize<S>(&self, serializer:S) -> Result<S::Ok, S::Error>
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where S: ser::Serializer {
     match &self {
       Self::Null => serializer.serialize_none(),
@@ -17,6 +19,7 @@ impl ser::Serialize for Ipld {
       Self::Number(value) => serializer.serialize_u64(*value),
       Self::String(value) => serializer.serialize_str(value),
       Self::Bytes(value) => serializer.serialize_bytes(value),
+      Self::Array(value) => serializer.collect_seq(value),
       Self::Object(value) => serializer.collect_seq(value),
       Self::Link(value) => value.serialize(serializer),
     }
@@ -25,97 +28,127 @@ impl ser::Serialize for Ipld {
 
 struct Serializer;
 
-pub struct StructSerializer {
-  ser: Serializer,
+pub struct StructSerializer<'a> {
+  ser: &'a Serializer,
   vec: Vec<Ipld>,
   variant_index: u32,
 }
 
-impl serde::Serializer for Serializer {
+impl<'a> serde::Serializer for &'a Serializer {
   type Ok = Ipld;
-  type Error = ();
+  type Error = SerdeError;
 
-  type SerializeSeq = SerializeMap;
+  type SerializeSeq = SerializeVec;
   type SerializeTuple = SerializeVec;
-  type SerializeTupleStruct = StructSerializer;
-  type SerializeTupleVariant = StructSerializer;
-  type SerializeMap = SerializeVec;
-  type SerializeStruct = SerializeVec;
-  type SerializeStructVariant = SerializeTupleVariant;
+  type SerializeTupleStruct = SerializeVec;
+  type SerializeTupleVariant = SerializeTupleVariant;
+  type SerializeMap = SerializeMap;
+  type SerializeStruct = StructSerializer<'a>;
+  type SerializeStructVariant = StructSerializer<'a>;
 
+  #[inline]
   fn serialize_bool(self, value: bool) -> Result<Self::Ok, Self::Error> {
-    self.serialize_bool(value)
+    Ok(Self::Ok::Bool(value))
   }
-  fn serialize_i8(self, value: i8) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_i8(self, _value: i8) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Negative numbers not supported"))
   }
-  fn serialize_i16(self, value: i16) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_i16(self, _value: i16) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Negative numbers not supported"))
   }
-  fn serialize_i32(self, value: i32) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_i32(self, _value: i32) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Negative numbers not supported"))
   }
-  fn serialize_i64(self, value: i64) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_i64(self, _value: i64) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Negative numbers not supported"))
   }
+
+  #[inline]
   fn serialize_u8(self, value: u8) -> Result<Self::Ok, Self::Error> {
     self.serialize_u64(u64::from(value))
   }
+
+  #[inline]
   fn serialize_u16(self, value: u16) -> Result<Self::Ok, Self::Error> {
     self.serialize_u64(u64::from(value))
   }
+
+  #[inline]
   fn serialize_u32(self, value: u32) -> Result<Self::Ok, Self::Error> {
     self.serialize_u64(u64::from(value))
   }
+
+  #[inline]
   fn serialize_u64(self, value: u64) -> Result<Self::Ok, Self::Error> {
-    Ok(Self::Ok::Integer(value))
+    Ok(Self::Ok::Number(value))
   }
-  fn serialize_f32(self, value: f32) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_f32(self, _value: f32) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Floats not supported"))
   }
-  fn serialize_f64(self, value: f64) -> Result<Self::Ok, Self::Error> {
-    Err(Self::Error)
+
+  #[inline]
+  fn serialize_f64(self, _value: f64) -> Result<Self::Ok, Self::Error> {
+    Err(ser::Error::custom("Floats not supported"))
   }
+
+  #[inline]
   fn serialize_char(self, value: char) -> Result<Self::Ok, Self::Error> {
     self.serialize_str(&value.to_string())
   }
+
+  #[inline]
   fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
     Ok(Self::Ok::String(value.to_owned()))
   }
+
+  #[inline]
   fn serialize_bytes(self, value: &[u8]) -> Result<Self::Ok, Self::Error> {
     Ok(Self::Ok::Bytes(value.to_vec()))
   }
   
+  #[inline]
   fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
     Ok(Self::Ok::Null)
   }
   
+  #[inline]
   fn serialize_some<T: ?Sized>(
     self, 
     value: &T
   ) -> Result<Self::Ok, Self::Error>
   where T: Serialize {
-    value.serialize(&self)
+    value.serialize(self)
   }
   
+  #[inline]
   fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
     Ok(Self::Ok::Array(vec![]))
   }
   
   fn serialize_unit_struct(
     self, 
-    name: &'static str
+    _name: &'static str
   ) -> Result<Self::Ok, Self::Error> {
     self.serialize_unit()
   }
   
   fn serialize_unit_variant(
     self, 
-    name: &'static str, 
+    _name: &'static str, 
     variant_index: u32, 
-    variant: &'static str
+    _variant: &'static str
   ) -> Result<Self::Ok, Self::Error> {
-    let idx = self.serialize_u64(variant_index)?;
+    let idx = self.serialize_u32(variant_index)?;
     Ok(Self::Ok::Array(vec![idx]))
   }
   
@@ -128,8 +161,10 @@ impl serde::Serializer for Serializer {
     let ipld = value.serialize(self);
     if name == CID_SERDE_PRIVATE_IDENTIFIER {
       if let Ok(Ipld::Bytes(bytes)) = ipld {
-        let cid = Cid::try_from(bytes)
-          .map_err(|err| ser::Error::custom(format!("Invalid CID: {}", err)))?;
+	let cid = Cid::from_bytes(&mut bytes.clone()).unwrap();
+	// TODO: Proper error handling
+        //let cid = Cid::try_from(bytes)
+        //  .map_err(|err| ser::Error::custom(format!("Invalid CID: {}", err)))?;
         return Ok(Self::Ok::Link(cid));
       }
     }
@@ -138,9 +173,9 @@ impl serde::Serializer for Serializer {
   
   fn serialize_newtype_variant<T: ?Sized>(
     self, 
-    name: &'static str, 
+    _name: &'static str, 
     variant_index: u32, 
-    variant: &'static str, 
+    _variant: &'static str, 
     value: &T
   ) -> Result<Self::Ok, Self::Error>
   where T: Serialize {
@@ -165,7 +200,7 @@ impl serde::Serializer for Serializer {
   
   fn serialize_tuple_struct(
     self, 
-    name: &'static str, 
+    _name: &'static str, 
     len: usize
   ) -> Result<Self::SerializeTupleStruct, Self::Error> {
     self.serialize_tuple(len)
@@ -173,9 +208,9 @@ impl serde::Serializer for Serializer {
   
   fn serialize_tuple_variant(
     self, 
-    name: &'static str, 
+    _name: &'static str, 
     variant_index: u32, 
-    variant: &'static str, 
+    _variant: &'static str, 
     len: usize
   ) -> Result<Self::SerializeTupleVariant, Self::Error> {
     Ok(SerializeTupleVariant {
@@ -186,28 +221,30 @@ impl serde::Serializer for Serializer {
   
   fn serialize_map(
     self, 
-    len: Option<usize>
+    _len: Option<usize>
   ) -> Result<Self::SerializeMap, Self::Error> {
     Ok(SerializeMap { vec: Vec::new(), next_key: None })
   }
+
   fn serialize_struct(
     self, 
-    name: &'static str, 
-    len: usize
+    _name: &'static str, 
+    _len: usize
   ) -> Result<Self::SerializeStruct, Self::Error> {
     Ok(StructSerializer { ser: &self, vec: Vec::new(), variant_index: 0 })
   }
   
   fn serialize_struct_variant(
     self, 
-    name: &'static str, 
+    _name: &'static str, 
     variant_index: u32, 
-    variant: &'static str, 
-    len: usize
+    _variant: &'static str, 
+    _len: usize
   ) -> Result<Self::SerializeStructVariant, Self::Error> {
     Ok(StructSerializer { ser: &self, vec: Vec::new(), variant_index })
   }
   
+  #[inline]
   fn is_human_readable(&self) -> bool { false }
   
 }
@@ -227,7 +264,7 @@ pub struct SerializeMap {
 }
 
 impl ser::SerializeSeq for SerializeVec {
-  type Error = Self::Error;
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_element<T: ?Sized>(
@@ -241,11 +278,11 @@ impl ser::SerializeSeq for SerializeVec {
     Ok(())
   }
 
-  fn end(self) -> Result<Self::Ok, Self::Error> { Ok(Self::Ok::List(self.vec)) }
+  fn end(self) -> Result<Self::Ok, Self::Error> { Ok(Self::Ok::Array(self.vec)) }
 }
 
 impl ser::SerializeTuple for SerializeVec {
-  type Error = Self::Error;
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_element<T: ?Sized>(
@@ -262,7 +299,7 @@ impl ser::SerializeTuple for SerializeVec {
 }
 
 impl ser::SerializeTupleStruct for SerializeVec {
-  type Error = Self::Error;
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_field<T: ?Sized>(
@@ -279,7 +316,7 @@ impl ser::SerializeTupleStruct for SerializeVec {
 }
 
 impl ser::SerializeTupleVariant for SerializeTupleVariant {
-  type Error = Self::Error;
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_field<T: ?Sized>(
@@ -296,14 +333,14 @@ impl ser::SerializeTupleVariant for SerializeTupleVariant {
   fn end(self) -> Result<Self::Ok, Self::Error> {
     let mut vec = Vec::new();
     let mut args = self.vec.clone();
-    vec.push(Ipld::Integer(self.idx.clone() as i128));
+    vec.push(Ipld::Number(self.idx.clone() as u64));
     vec.append(&mut args);
-    Ok(Ipld::List(vec))
+    Ok(Ipld::Array(vec))
   }
 }
 
 impl ser::SerializeMap for SerializeMap {
-  type Error = Self::Error;
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
@@ -327,20 +364,20 @@ impl ser::SerializeMap for SerializeMap {
     // Panic because this indicates a bug in the program rather than an
     // expected failure.
     let key = key.expect("serialize_value called before serialize_key");
-    self.vec.push(Ipld::List(vec![key, value.serialize(&Serializer)?]));
+    self.vec.push(Ipld::Array(vec![key, value.serialize(&Serializer)?]));
     Ok(())
   }
 
-  fn end(self) -> Result<Self::Ok, Self::Error> { Ok(Self::Ok::List(self.vec)) }
+  fn end(self) -> Result<Self::Ok, Self::Error> { Ok(Self::Ok::Array(self.vec)) }
 }
 
-impl StructSerializer {
+impl<'a> StructSerializer<'a> {
   #[inline]
   fn serialize_field_inner<T>(
     &mut self,
     _: &'static str,
     value: &T,
-  ) -> Result<(), ()>
+  ) -> Result<(), SerdeError>
   where
     T: ?Sized + ser::Serialize,
   {
@@ -350,16 +387,16 @@ impl StructSerializer {
   }
 
   #[inline]
-  fn skip_field_inner(&mut self, _: &'static str) -> Result<(), ()> {
+  fn skip_field_inner(&mut self, _: &'static str) -> Result<(), SerdeError> {
     Ok(())
   }
 
   #[inline]
-  fn end_inner(self) -> Result<Vec<Ipld>, ()> { Ok(self.vec) }
+  fn end_inner(self) -> Result<Vec<Ipld>, SerdeError> { Ok(self.vec) }
 }
 
-impl ser::SerializeStruct for StructSerializer {
-  type Error = Self::Error;
+impl<'a> ser::SerializeStruct for StructSerializer<'a> {
+  type Error = SerdeError;
   type Ok = Ipld;
 
   #[inline]
@@ -376,19 +413,19 @@ impl ser::SerializeStruct for StructSerializer {
   }
 
   #[inline]
-  fn skip_field(&mut self, key: &'static str) -> Result<(), ()> {
+  fn skip_field(&mut self, key: &'static str) -> Result<(), Self::Error> {
     self.skip_field_inner(key)
   }
 
   #[inline]
-  fn end(self) -> Result<Self::Ok, ()> {
+  fn end(self) -> Result<Self::Ok, Self::Error> {
     let x = self.end_inner()?;
-    Ok(Ipld::List(x))
+    Ok(Ipld::Array(x))
   }
 }
 
-impl ser::SerializeStructVariant for StructSerializer {
-  type Error = Self::Error;
+impl<'a> ser::SerializeStructVariant for StructSerializer<'a> {
+  type Error = SerdeError;
   type Ok = Ipld;
 
   fn serialize_field<T: ?Sized>(
@@ -405,24 +442,24 @@ impl ser::SerializeStructVariant for StructSerializer {
 
   fn end(self) -> Result<Self::Ok, Self::Error> {
     let mut vec = Vec::new();
-    vec.push(Ipld::Integer(self.variant_index.clone() as i128));
+    vec.push(Ipld::Number(self.variant_index.clone() as u64));
     let mut args = self.end_inner()?;
     vec.append(&mut args);
-    Ok(Ipld::List(vec))
+    Ok(Ipld::Array(vec))
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use crate::serde::to_ipld;
+  use crate::serde::ser::to_ipld;
   use crate::ipld::Ipld;
 
   #[test]
   fn val_to_ipld() {
-    let data = vec![];
+    let data: Vec<Ipld> = vec![];
     let result = Ipld::Array(vec![]);
     assert_eq!(
-      to_ipld(data),
+      to_ipld(data).unwrap(),
       result,
     );
   }

@@ -7,4 +7,5 @@ mod multibase;
 mod multibase_impl;
 mod multihash;
 mod unsigned_varint;
+mod error;
 mod serde;
