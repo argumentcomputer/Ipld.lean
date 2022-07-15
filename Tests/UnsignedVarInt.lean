@@ -24,5 +24,5 @@ def cases : List Case :=
   , Case.mk 16384 { data := #[0b10000000, 0b10000000, 0b000000001] }
   ]
 
-def main := lspecIO do
+def main := lspec $
   test "converts `Nat` ↔ `UnsignedVarInt` properly" (findFailing cases).isEmpty
