@@ -62,7 +62,7 @@ impl fmt::Display for Multihash {
 mod tests {
     use crate::multihash::Multihash;
 
-  #[ignore]
+    #[ignore]
     #[test]
     fn multihash_bytes_roundrip() {
         let data = vec![1];
