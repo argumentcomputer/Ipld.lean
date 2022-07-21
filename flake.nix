@@ -49,9 +49,15 @@
           copyLibs = true;
         };
         project = leanPkgs.buildLeanPackage {
-          debug = false;
-          name = "Ipld";
-          src = ".";
+          inherit name;
+          # Where the lean files are located
+          src = ./.;
+        };
+        test = leanPkgs.buildLeanPackage {
+          name = "Tests";
+          deps = [ project ];
+          # Where the lean files are located
+          src = ./.;
         };
       in
       {
@@ -62,7 +68,17 @@
           inherit (leanPkgs) lean;
         };
 
-        defaultPackage = ipld-rs;
+        checks.test = test.executable;
+
+        defaultPackage = self.packages.${system}.${name};
+        devShell = pkgs.mkShell {
+          inputsFrom = [ project.executable ];
+          buildInputs = with pkgs; [
+            leanPkgs.lean-dev
+          ];
+          LEAN_PATH = "./src:./test";
+          LEAN_SRC_PATH = "./src:./test";
+        };
       });
 }
 

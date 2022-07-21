@@ -17,10 +17,10 @@ def findFailing (cases: List Case) : List Case :=
   List.filter (fun x => not (testCase x)) cases
 
 def mkCase (input: String) (hash: String) : Option Case := do
-  let input ← input.toUTF8
-  let hash  ← ByteArray.mk <$> Array.mk <$> Multibase.decode Multibase.Base16 hash
-  let hash  ← fromBytes hash
-  return Case.mk input hash
+  let input := input.toUTF8
+  let hash ← ByteArray.mk <$> Array.mk <$> Base.b16.toMultibase.decode hash
+  let hash ← fromBytes hash
+  some ⟨input, hash⟩
 
 def cases : List Case := List.catOptions
   [ mkCase "431fb5d4c9b735ba1a34d0df045118806ae2336f2c" "f14409a7a8207a57d03e9c524ae7fd39563bfe1a466a3a0323875eba8b034a1d59c3b7218103543f7777f17ef03dcaf44d12c74dfb83726e7425cf61225e9a54b3b3a"
@@ -31,5 +31,5 @@ def cases : List Case := List.catOptions
   , mkCase "4c44254356730838195a32cbb1b8be3bed4c6c05c0" "f14403dc43b479f5e9e008a5256ca442e66286995c39deb732a6fb4e2e791a3c4a6a6e5322e571e945a78748896edc67866ab00c767320f6956833857eab991a73a77"
   ]
 
-def main := lspec "Multibase works properly" $
-  it "decodes multihashes" (findFailing cases) shouldBeEmpty
+def main := lspecIO do
+  test "decodes multihashes properly" (findFailing cases).isEmpty
