@@ -26,3 +26,36 @@ mod error {
 }
 
 //pub use error::SerdeError;
+
+#[cfg(test)]
+mod tests {
+  use crate::serde::{
+    ser::to_ipld,
+    de::from_ipld,
+  };
+  use crate::ipld::Ipld;
+  use serde::{Serialize, Deserialize};
+
+  #[test]
+  fn val_to_ipld() {
+    let data: Vec<Ipld> = vec![];
+    let result = Ipld::Array(vec![]);
+    assert_eq!(
+      to_ipld(data).unwrap(),
+      result,
+    );
+  }
+
+  #[derive(Serialize, Deserialize, Debug)]
+  struct Point {
+    x: u32,
+    y: u32,
+  }
+
+  #[test]
+  fn roundtrip() {
+    let point = Point { x: 1, y: 2 };
+    //let ser_result = Ipld::Array(vec![Ipld::Number(1), Ipld::Number(2)]);
+    assert_eq!(from_ipld::<T>(to_ipld(point).unwrap()).unwrap(), point);
+  }
+}

@@ -8,7 +8,6 @@ use std::fmt;
 use std::convert::TryFrom;
 
 /// Supported CID spec:
-/// base32 encoding
 /// dag-cbor codec
 /// SHA-256 or Keccak
 
