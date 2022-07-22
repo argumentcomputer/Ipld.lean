@@ -2,10 +2,10 @@
 
 mod cid;
 mod dag_cbor;
+mod error;
 mod ipld;
 mod multibase;
 mod multibase_impl;
 mod multihash;
-mod unsigned_varint;
-mod error;
 mod serde;
+mod unsigned_varint;

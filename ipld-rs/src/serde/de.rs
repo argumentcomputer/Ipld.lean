@@ -1,6 +1,12 @@
-use crate::cid::{BytesToCidVisitor, Cid, CID_SERDE_PRIVATE_IDENTIFIER};
-use crate::serde::error::SerdeError;
-use crate::ipld::Ipld;
+use crate::{
+  cid::{
+    BytesToCidVisitor,
+    Cid,
+    CID_SERDE_PRIVATE_IDENTIFIER,
+  },
+  ipld::Ipld,
+  serde::error::SerdeError,
+};
 
 use std::{
   collections::BTreeMap,
@@ -10,8 +16,8 @@ use std::{
 use serde::{
   de::{
     self,
-    IntoDeserializer,
     Error,
+    IntoDeserializer,
   },
   forward_to_deserialize_any,
 };
@@ -54,7 +60,7 @@ impl<'de> de::Deserialize<'de> for Ipld {
       #[inline]
       fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
       where E: de::Error {
-        Ok(Ipld::Number(value.into()))
+        Ok(Ipld::Number(value))
       }
 
       #[inline]
@@ -198,9 +204,7 @@ impl<'de> de::Deserializer<'de> for Ipld {
       Self::String(s) => visitor.visit_str(&s),
       Self::Bytes(b) => visitor.visit_bytes(&b),
       Self::Array(a) => visit_seq(a, visitor),
-      Self::Object(_o) => {
-        Err(Error::custom("no deserialization for Objects"))
-      }
+      Self::Object(_o) => Err(Error::custom("no deserialization for Objects")),
       Self::Link(cid) => visitor.visit_newtype_struct(CidDeserializer(cid)),
     }
   }
@@ -442,10 +446,8 @@ impl<'de> de::Deserializer<'de> for Ipld {
     visitor: V,
   ) -> Result<V::Value, Self::Error> {
     let (variant, value) = match self {
-      Ipld::Array(xs) if xs.len() >= 1 => match &xs[0] {
-        Ipld::Number(idx)
-          if *idx < variants.len() as u64 =>
-        {
+      Ipld::Array(xs) if !xs.is_empty() => match &xs[0] {
+        Ipld::Number(idx) if *idx < variants.len() as u64 => {
           let idx = *idx as usize;
           let variant = String::from(variants[idx]);
           let value = if xs.len() == 1 {

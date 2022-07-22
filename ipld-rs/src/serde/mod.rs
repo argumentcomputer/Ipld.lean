@@ -1,6 +1,7 @@
 mod de;
 mod ser;
 
+// TODO: move to ../error.rs
 mod error {
   #[derive(Clone, Debug)]
   pub struct SerdeError(String);
@@ -12,50 +13,53 @@ mod error {
   }
 
   impl serde::de::Error for SerdeError {
-    fn custom<T: core::fmt::Display>(msg: T) -> Self {
-      Self(msg.to_string())
-    }
+    fn custom<T: core::fmt::Display>(msg: T) -> Self { Self(msg.to_string()) }
   }
   impl serde::ser::Error for SerdeError {
-    fn custom<T: core::fmt::Display>(msg: T) -> Self {
-      Self(msg.to_string())
-    }
+    fn custom<T: core::fmt::Display>(msg: T) -> Self { Self(msg.to_string()) }
   }
-  
+
   impl serde::ser::StdError for SerdeError {}
 }
 
-//pub use error::SerdeError;
+// pub use error::SerdeError;
 
 #[cfg(test)]
 mod tests {
-  use crate::serde::{
-    ser::to_ipld,
-    de::from_ipld,
+  use crate::{
+    ipld::Ipld,
+    serde::{
+      de::from_ipld,
+      ser::to_ipld,
+    },
   };
-  use crate::ipld::Ipld;
-  use serde::{Serialize, Deserialize};
+  use serde::{
+    de::DeserializeOwned,
+    Deserialize,
+    Serialize,
+  };
 
-  #[test]
-  fn val_to_ipld() {
-    let data: Vec<Ipld> = vec![];
-    let result = Ipld::Array(vec![]);
-    assert_eq!(
-      to_ipld(data).unwrap(),
-      result,
-    );
+  /// Utility for testing (de)serialization of [`Ipld`].
+  ///
+  /// Checks if `data` and `ipld` match if they are encoded into each other.
+  fn assert_roundtrip<T>(data: &T, ipld: &Ipld)
+  where T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug {
+    let encoded: Ipld = to_ipld(&data).unwrap();
+    assert_eq!(&encoded, ipld);
+    let decoded: T = from_ipld(ipld.clone()).unwrap();
+    assert_eq!(&decoded, data);
   }
 
-  #[derive(Serialize, Deserialize, Debug)]
+  #[derive(Serialize, Deserialize, PartialEq, Debug)]
   struct Point {
     x: u32,
     y: u32,
   }
 
   #[test]
-  fn roundtrip() {
+  fn ser_de_ipld() {
     let point = Point { x: 1, y: 2 };
-    //let ser_result = Ipld::Array(vec![Ipld::Number(1), Ipld::Number(2)]);
-    assert_eq!(from_ipld::<T>(to_ipld(point).unwrap()).unwrap(), point);
+    let expected = Ipld::Array(vec![Ipld::Number(1), Ipld::Number(2)]);
+    assert_roundtrip(&point, &expected);
   }
 }
