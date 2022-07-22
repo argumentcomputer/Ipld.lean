@@ -1,8 +1,11 @@
-#[cfg(test)]
-mod tests {
-  #[test]
-  fn it_works() {
-    let result = 2 + 2;
-    assert_eq!(result, 4);
-  }
-}
+#![allow(dead_code)]
+
+mod cid;
+mod dag_cbor;
+mod error;
+mod ipld;
+mod multibase;
+mod multibase_impl;
+mod multihash;
+mod serde;
+mod unsigned_varint;
