@@ -251,7 +251,8 @@ def cases : List Case :=
 
 end RFC4648
 
-def main := lspec $
+open LSpec in
+def main := lspecIO $
   test "encodes \"yes mani !\"" (findFailing Basic.cases).isEmpty $
   test "encodes \"hello world\"" (findFailing CaseInsensitivity.cases).isEmpty $
   test "encodes \"\\x00yes mani !\"" (findFailing LeadingZero.cases).isEmpty $

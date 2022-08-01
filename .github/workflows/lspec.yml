@@ -19,4 +19,4 @@ jobs:
       - name: build LSpec binary
         run: lake build lspec
       - name: run LSpec
-        run: ./lean_packages/LSpec/build/bin/lspec
+        run: lake exe lspec

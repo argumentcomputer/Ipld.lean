@@ -41,5 +41,6 @@ def cases : List Case :=
     (ByteArray.mk #[0xa1, 0x65, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x65, 0x57, 0x6f, 0x72, 0x6c, 0x64])
   ]
 
-def main := lspec $
+open LSpec in
+def main := lspecIO $
   test "serializes and deserializes IPLD types properly" (findFailing cases).isEmpty
