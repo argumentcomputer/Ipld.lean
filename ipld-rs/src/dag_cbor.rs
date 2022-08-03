@@ -177,7 +177,7 @@ pub fn deserialize<R: Read>(r: &mut R) -> Result<Ipld> {
       Ok(Ipld::Object(map))
     }
     // Map of pairs?
-    //0xbf => {},
+    // 0xbf => {},
     // Major type 6: CID Tag
     0xd8 => {
       let tag = read_u8(r)?;
@@ -263,7 +263,10 @@ fn read_link<R: Read>(r: &mut R) -> Result<Cid> {
 mod tests {
   use crate::{
     cid::Cid,
-    dag_cbor::{serialize, deserialize},
+    dag_cbor::{
+      deserialize,
+      serialize,
+    },
     ipld::Ipld,
     multihash::Multihash,
   };
@@ -281,31 +284,55 @@ mod tests {
       Ipld::to_object(vec![("Hello".into(), Ipld::String("World".into()))]);
     let cid = Cid::new(1, 0x71, Multihash::sha3_256(&serialize(&ipld_null)));
     let _ipld_link = Ipld::Link(cid);
-    //assert_eq!(serialize(&ipld_null), vec![0xf6]);
-    //assert_eq!(serialize(&ipld_bool), vec![0xf5]);
-    //assert_eq!(serialize(&ipld_number), vec![23]);
-    //assert_eq!(serialize(&ipld_number_big), vec![0x1a, 0x00, 0x01, 0x00, 0x00]);
-    //assert_eq!(serialize(&ipld_string), vec![101, 72, 101, 108, 108, 111]);
-    //assert_eq!(serialize(&ipld_bytes), vec![68, 0, 8, 4, 0]);
-    //assert_eq!(serialize(&ipld_array), vec![129, 101, 72, 101, 108, 108, 111]);
-    //assert_eq!(serialize(&ipld_object), vec![
+    // assert_eq!(serialize(&ipld_null), vec![0xf6]);
+    // assert_eq!(serialize(&ipld_bool), vec![0xf5]);
+    // assert_eq!(serialize(&ipld_number), vec![23]);
+    // assert_eq!(serialize(&ipld_number_big), vec![0x1a, 0x00, 0x01, 0x00,
+    // 0x00]); assert_eq!(serialize(&ipld_string), vec![101, 72, 101, 108,
+    // 108, 111]); assert_eq!(serialize(&ipld_bytes), vec![68, 0, 8, 4, 0]);
+    // assert_eq!(serialize(&ipld_array), vec![129, 101, 72, 101, 108, 108,
+    // 111]); assert_eq!(serialize(&ipld_object), vec![
     //  161, 101, 72, 101, 108, 108, 111, 101, 87, 111, 114, 108, 100
     //]);
-    //assert_eq!(serialize(&ipld_link), vec![
-    //  216, 42, 88, 37, 0, 1, 113, 22, 32, 69, 122, 165, 228, 28, 115, 252, 178,
-    //  178, 165, 119, 247, 73, 0, 207, 105, 172, 208, 72, 59, 220, 98, 86, 108,
-    //  23, 111, 21, 55, 76, 252, 185, 161
+    // assert_eq!(serialize(&ipld_link), vec![
+    //  216, 42, 88, 37, 0, 1, 113, 22, 32, 69, 122, 165, 228, 28, 115, 252,
+    // 178,  178, 165, 119, 247, 73, 0, 207, 105, 172, 208, 72, 59, 220, 98,
+    // 86, 108,  23, 111, 21, 55, 76, 252, 185, 161
     //]);
-    assert_eq!(ipld_null, deserialize(&mut &serialize(&ipld_null)[..]).unwrap());
-    assert_eq!(ipld_bool, deserialize(&mut &serialize(&ipld_bool)[..]).unwrap());
-    assert_eq!(ipld_number, deserialize(&mut &serialize(&ipld_number)[..]).unwrap());
-    assert_eq!(ipld_number_big, deserialize(&mut &serialize(&ipld_number_big)[..]).unwrap());
-    assert_eq!(ipld_string, deserialize(&mut &serialize(&ipld_string)[..]).unwrap());
-    assert_eq!(ipld_bytes, deserialize(&mut &serialize(&ipld_bytes)[..]).unwrap());
-    assert_eq!(ipld_array, deserialize(&mut &serialize(&ipld_array)[..]).unwrap());
-    assert_eq!(ipld_object, deserialize(&mut &serialize(&ipld_object)[..]).unwrap());
+    assert_eq!(
+      ipld_null,
+      deserialize(&mut &serialize(&ipld_null)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_bool,
+      deserialize(&mut &serialize(&ipld_bool)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_number,
+      deserialize(&mut &serialize(&ipld_number)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_number_big,
+      deserialize(&mut &serialize(&ipld_number_big)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_string,
+      deserialize(&mut &serialize(&ipld_string)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_bytes,
+      deserialize(&mut &serialize(&ipld_bytes)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_array,
+      deserialize(&mut &serialize(&ipld_array)[..]).unwrap()
+    );
+    assert_eq!(
+      ipld_object,
+      deserialize(&mut &serialize(&ipld_object)[..]).unwrap()
+    );
     // TODO: Fix Cid::from_bytes bug
-    //assert_eq!(ipld_link, deserialize(&mut &serialize(&ipld_link)[..]).unwrap());
+    // assert_eq!(ipld_link, deserialize(&mut
+    // &serialize(&ipld_link)[..]).unwrap());
   }
-
 }

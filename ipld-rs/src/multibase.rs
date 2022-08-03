@@ -1,6 +1,6 @@
 // use crate::multibase_impl;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Multibase {
   code: char,
   alpha: String,
@@ -156,7 +156,7 @@ impl Multibase {
       Ok(vec![])
     }
     else {
-      //println!("My data: {}", data);
+      // println!("My data: {}", data);
       let data_num: u128 = data.parse().unwrap();
       // Converts to sized 16 byte BE array
       let out = data_num.to_be_bytes().to_vec();
@@ -207,17 +207,17 @@ pub fn read_be_u128(input: &[u8]) -> Result<u128, String> {
   }
 }
 
-//pub fn encode_bytes(input: Vec<u8>) -> String {
+// pub fn encode_bytes(input: Vec<u8>) -> String {
 //  Multibase::encode(input)
 //}
-//pub fn decode_bytes(x: String) -> Result<Vec<u8>, String> {
+// pub fn decode_bytes(x: String) -> Result<Vec<u8>, String> {
 //  Multibase::decode(x)
 //}
 
 #[cfg(test)]
 mod tests {
   use crate::multibase::Multibase;
-  
+
   #[ignore]
   #[test]
   fn multibase_roundtrip() {
@@ -227,7 +227,6 @@ mod tests {
       alpha: String::from("01"),
       rfc4648: true,
       pad: false,
-
     };
     let base32 = Multibase {
       code: 'b',

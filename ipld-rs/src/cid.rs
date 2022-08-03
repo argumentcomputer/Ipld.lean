@@ -22,7 +22,7 @@ use std::{
 /// dag-cbor codec
 /// SHA-256 or Keccak
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Cid {
   pub version: u64,
   pub codec: u64,
@@ -113,24 +113,18 @@ impl<'de> de::Visitor<'de> for BytesToCidVisitor {
   }
 }
 
-
 #[cfg(test)]
 mod tests {
-  use crate::cid::Cid;
-  use crate::multihash::Multihash;
+  use crate::{
+    cid::Cid,
+    multihash::Multihash,
+  };
 
   #[test]
   fn cid_bytes_roundrip() {
     let data = vec![1];
     let digest = Multihash::sha3_256(&data);
-    let cid = Cid {
-      version: 0x01,
-      codec: 0x71,
-      hash: digest,
-    };
-    assert_eq!(
-      cid,
-      Cid::from_bytes(&mut &cid.to_bytes()[..]).unwrap()
-    );
+    let cid = Cid { version: 0x01, codec: 0x71, hash: digest };
+    assert_eq!(cid, Cid::from_bytes(&mut &cid.to_bytes()[..]).unwrap());
   }
 }

@@ -13,7 +13,7 @@ use std::{
   io::Read,
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Multihash {
   code: u64,
   size: u64,
