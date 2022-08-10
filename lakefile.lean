@@ -7,10 +7,10 @@ package Ipld
 lean_lib Ipld
 
 require LSpec from git
-  "https://github.com/yatima-inc/LSpec.git" @ "59de5823f0f055f06cacd7c066fff6c3e14b13a2"
+  "https://github.com/yatima-inc/LSpec.git" @ "28c24d851c614b88f3c7f1874f29f393ee35ba8e"
 
 require YatimaStdLib from git
-  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "a2bbc9a48db7efd5d761a5b27f2cc6c1863b9622"
+  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "40568b0c3e58646dc525bee32ba7a42a80b993a1"
 
 lean_exe Tests.DagCbor
 lean_exe Tests.Multibase
