@@ -539,9 +539,15 @@ impl<'de> de::MapAccess<'de> for MapDeserializer {
     K: de::DeserializeSeed<'de>,
   {
     match self.iter.next() {
-      Some((key, value)) => {
-        self.value = Some(value);
-        seed.deserialize(Ipld::String(key)).map(Some)
+      Some(Ipld::Array(xs)) => match xs.as_slice() {
+        [key, val] => {
+          self.value = Some(val.to_owned());
+          seed.deserialize(key.to_owned()).map(Some)
+        }
+        _ => todo!("Error handling"),
+      },
+      Some(_) => {
+        todo!("Error handling")
       }
       None => Ok(None),
     }

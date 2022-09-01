@@ -68,7 +68,7 @@ impl Multibase {
   // Appends a given number of '=' characters to a string
   fn pad_right(&self, input: &mut String, num_pad: usize) {
     let pad: String = "=".repeat(num_pad);
-    input.push_str(&pad);
+    input.push_str(&pad)
   }
 
   // Returns the number of leading zero bits in an array
@@ -83,6 +83,23 @@ impl Multibase {
     zeros.into()
   }
 
+  // TODO: handle error gracefully
+  // Checks if first char of given string is the same as the Multibase code
+  // If so, returns the rest of the string
+  fn read_code(&self, input: &str) -> Result<String, String> {
+    match input.chars().nth(0) {
+      Some(c) => {
+    	if c == self.code {
+    	  Ok(input.strip_prefix(c).unwrap().to_string())
+    	}
+    	else {
+    	  Err("Invalid multibase input".into())
+    	}
+      },
+      _ => Err("Empty string".into()),
+    }
+  }
+  
   // Returns the number of characters equal to alpha[0] in a given string
   fn read_zeros(&self, input: &str) -> u64 {
     let zero = self.zero();
@@ -91,23 +108,24 @@ impl Multibase {
   }
 
   // Converts a list of bytes into a base encoding
-  pub fn encode(&self, mut input: Vec<u8>) -> String {
+  pub fn encode(&self, input: &[u8]) -> String {
+    let mut data = input.to_vec();
     let log = self.log2_base() as usize;
-    let lzs = self.leading_zero_bits(&input) as usize;
+    let lzs = self.leading_zero_bits(&data) as usize;
     let rfc = self.rfc4648;
     let zeros: String = match rfc {
       true => self.zero().to_string().repeat(lzs / log),
       _ => self.zero().to_string().repeat(lzs / 8),
     };
     let grp = self.group() as usize / 8;
-    let byte_pad = (grp - input.len() % grp) % grp;
+    let byte_pad = (grp - data.len() % grp) % grp;
     if rfc {
-      input.extend(vec![0; byte_pad]);
+      data.extend(vec![0; byte_pad]);
     }
     // TODO: handle error gracefully
     // Converts a big-endian list of bytes into u128, then into numeric string
     // form Seems like a compression operation
-    let n = read_be_u128(&input).unwrap();
+    let n = read_be_u128(&data).unwrap();
     let mut encode_str = n.to_string();
     let char_pad = (byte_pad * 8) / log;
     if rfc {
@@ -122,15 +140,8 @@ impl Multibase {
 
   // Converts base-encoded bytes into base
   pub fn decode(&self, input: &str) -> Result<Vec<u8>, String> {
-    // TODO: handle errors gracefully
-    // Strip first char if same as the Multibase code and return rest of string 
-    if let Some(c) = input.chars().nth(0) && c == self.code {
-      let mut data = input.strip_prefix(c);
-    }
-    else {
-      Err("Invalid multibase input")
-    }
-    let mut len = input.len();
+    let mut data = self.read_code(input)?;
+    let mut len = data.len();
     let mut zero_chars = self.read_zeros(&data) as usize;
     let log = self.log2_base() as usize;
     if self.rfc4648 {
@@ -145,7 +156,6 @@ impl Multibase {
       Ok(vec![])
     }
     else {
-      // println!("My data: {}", data);
       let data_num: u128 = data.parse().unwrap();
       // Converts to sized 16 byte BE array
       let out = data_num.to_be_bytes().to_vec();
@@ -223,7 +233,7 @@ mod tests {
       rfc4648: true,
       pad: false,
     };
-    assert_eq!(data, base2.decode(&base2.encode(data.clone())).unwrap());
-    assert_eq!(data, base32.decode(&base32.encode(data.clone())).unwrap());
+    assert_eq!(data, base2.decode(&base2.encode(&data)).unwrap());
+    assert_eq!(data, base32.decode(&base32.encode(&data)).unwrap());
   }
 }
