@@ -1,3 +1,5 @@
+// TODO: Add descriptive errors with thiserror
+
 // use std::fmt;
 // use thiserror::Error;
 //

@@ -63,7 +63,7 @@ mod tests {
   use crate::multihash::Multihash;
 
   #[test]
-  fn multihash_bytes_roundrip() {
+  fn multihash_bytes_roundtrip() {
     let data = vec![1];
     let result = Multihash::sha3_256(&data);
     assert_eq!(

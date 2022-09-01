@@ -121,7 +121,7 @@ mod tests {
   };
 
   #[test]
-  fn cid_bytes_roundrip() {
+  fn cid_bytes_roundtrip() {
     let data = vec![1];
     let digest = Multihash::sha3_256(&data);
     let cid = Cid { version: 0x01, codec: 0x71, hash: digest };

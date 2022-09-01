@@ -26,12 +26,9 @@ pub fn from_varint(bytes: &[u8]) -> Result<u64, ()> {
   let mut result: u64 = 0;
   for (i, item) in bytes.iter().enumerate() {
     let b = (*item as u64 % 128) << (i * 7);
+    result += b as u64;
     if item / 128 == 0 {
-      result += b as u64;
       break;
-    }
-    else {
-      result += b as u64;
     }
   }
   Ok(result)

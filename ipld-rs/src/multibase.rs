@@ -83,23 +83,6 @@ impl Multibase {
     zeros.into()
   }
 
-  // Checks if first char of given string is the same as the Multibase code
-  // If so, returns the rest of the string
-  fn read_code(&self, input: &str) -> Option<String> {
-    let mut iter = input.chars();
-    match iter.next() {
-      Some(c) => {
-        if c == self.code {
-          Some(iter.collect())
-        }
-        else {
-          None
-        }
-      }
-      _ => None,
-    }
-  }
-
   // Returns the number of characters equal to alpha[0] in a given string
   fn read_zeros(&self, input: &str) -> u64 {
     let zero = self.zero();
@@ -139,8 +122,14 @@ impl Multibase {
 
   // Converts base-encoded bytes into base
   pub fn decode(&self, input: &str) -> Result<Vec<u8>, String> {
-    // TODO: handle error gracefully
-    let mut data: String = self.read_code(input).unwrap();
+    // TODO: handle errors gracefully
+    // Strip first char if same as the Multibase code and return rest of string 
+    if let Some(c) = input.chars().nth(0) && c == self.code {
+      let mut data = input.strip_prefix(c);
+    }
+    else {
+      Err("Invalid multibase input")
+    }
     let mut len = input.len();
     let mut zero_chars = self.read_zeros(&data) as usize;
     let log = self.log2_base() as usize;
