@@ -25,6 +25,10 @@ def fromBytes (bytes : ByteArray) : Option Cid :=
       (Multihash.fromBytes bytes).bind $ fun hash =>
         some { version, codec, hash }
 
+def fromString (multibase: Multibase) (string: String) : Option Cid := do
+  let bytes <- multibase.decodeBytes string;
+  fromBytes bytes
+
 instance : Ord Cid where
   compare x y := compare (toBytes x) (toBytes y)
 
