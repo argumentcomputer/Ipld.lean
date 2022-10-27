@@ -53,7 +53,7 @@ def serLink (l: Cid) : ByteArray :=
   let buf := Cid.toBytes l
   (serU64 6 42) ++ serU64 2 (buf.size.toUInt64 + 1) ++ ⟨#[0]⟩ ++ buf
 
-def nodeToList (map : Std.RBNode String (fun _ => Ipld)) :
+def nodeToList (map : Lean.RBNode String (fun _ => Ipld)) :
     List (String × Ipld) := 
   map.revFold (fun as a b => (a,b)::as) []
 
@@ -74,7 +74,7 @@ mutual
     as.foldl (init := serU64 4 as.size.toUInt64)
       fun acc a => acc ++ serialize a
 
-  partial def serObject (o : Std.RBNode String (fun _ => Ipld)) : ByteArray :=
+  partial def serObject (o : Lean.RBNode String (fun _ => Ipld)) : ByteArray :=
     let list := nodeToList o
     list.foldl (init := serU64 5 list.length.toUInt64)
       fun acc (k, v) => acc ++ serString k ++ serialize v
