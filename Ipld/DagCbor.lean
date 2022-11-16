@@ -153,7 +153,9 @@ def readString (len: Nat) : Deserializer String :=
   return String.fromUTF8Unchecked (← take len)
 
 def repeatFor (len : Nat) (d : Deserializer α) : Deserializer (List α) := do
-  return List.replicate len (← d)
+  match len with
+  | 0     => return []
+  | n + 1 => List.cons <$> d <*> repeatFor n d
 
 partial def repeatIl (d : Deserializer α) : Deserializer (List α) := do
   let idx ← get
@@ -161,7 +163,7 @@ partial def repeatIl (d : Deserializer α) : Deserializer (List α) := do
   if h : idx < ctx.size then
     if ctx.bytes[idx]'(by rw [ctx.valid]; exact h) == 0xff then
       return []
-    else return (← d) :: (← repeatIl d)
+    else List.cons <$> d <*> (repeatIl d)
   else throw .UnexpectedEOF
 
 def readLink : Deserializer Cid := do
@@ -172,8 +174,7 @@ def readLink : Deserializer Cid := do
   let bytes ← take len.toNat
   if bytes[0]! != 0 then throw (DeserializeError.CidPrefix bytes[0]!)
   let bytes := bytes.extract 1 bytes.size
-  let cid := Cid.fromBytes bytes
-  match cid with
+  match Cid.fromBytes bytes with
   | some x => return x
   | none   => throw DeserializeError.CidRead
 
