@@ -81,10 +81,10 @@ mutual
 
 end
 
-structure ByteCursor where
+structure BytesContext where
   bytes : ByteArray
-  pos: Nat
-  deriving Repr
+  size  : Nat
+  valid : bytes.size = size
 
 inductive DeserializeError
   | UnexpectedEOF
@@ -97,9 +97,6 @@ inductive DeserializeError
   | ExpectedTag (tag : UInt8) (read : UInt8)
   deriving BEq, Repr
 
-instance : ToString ByteCursor where
-  toString bc := (toString bc.bytes.data.data) ++ "[" ++ (toString bc.pos) ++ "]"
-
 instance : ToString DeserializeError where toString
   | .UnexpectedEOF => "Unexpected EOF"
   | .NoAlt => "No Alt"
@@ -110,25 +107,26 @@ instance : ToString DeserializeError where toString
   | .CidLenOutOfRange len => "CidLenOutOfRange " ++ toString len
   | .CidPrefix tag => "CidPrefix " ++ toString tag
 
-def getPos (x: ByteCursor) : Nat :=
-  x.pos
-
-def setPos (x: ByteCursor) (i: Nat) : ByteCursor := 
-  { bytes := x.bytes, pos := i}
-
-abbrev Deserializer (α) := EStateM DeserializeError ByteCursor α
+abbrev Deserializer := ReaderT BytesContext $ ExceptT DeserializeError $ StateM Nat
 
 def next : Deserializer UInt8 := do
-  let { bytes, pos } ← get
-  if pos + 1 > bytes.size then throw DeserializeError.UnexpectedEOF
-  set (ByteCursor.mk bytes (pos + 1))
-  return bytes[pos]!
+  let idx ← get
+  let ctx ← read
+  if h : idx < ctx.size then
+    let b := ctx.bytes[idx]'(by rw [ctx.valid]; exact h)
+    set $ idx + 1
+    return b
+  else
+    throw .UnexpectedEOF
 
-def take (n: Nat) : Deserializer ByteArray := do
-  let { bytes, pos } ← get
-  if pos + n > bytes.size then throw DeserializeError.UnexpectedEOF
-  set (ByteCursor.mk bytes (pos + n))
-  return bytes.extract pos (pos + n)
+def take (n : Nat) : Deserializer ByteArray := do
+  let idx ← get
+  let ctx ← read
+  if ctx.size - idx < n then
+    throw .UnexpectedEOF
+  let bytes := ctx.bytes.copySlice idx .empty 0 n
+  set $ idx + n
+  return bytes
 
 def tag (t: UInt8) : Deserializer UInt8 := do
   let tag ← next
@@ -136,12 +134,7 @@ def tag (t: UInt8) : Deserializer UInt8 := do
   then return tag
   else throw (DeserializeError.ExpectedTag t tag)
 
-def alt (ds : List (Deserializer α)) : Deserializer α := do
-  match ds with
-  | []      => throw DeserializeError.NoAlt
-  | c :: cs => EStateM.orElse' c (alt cs)
-
-def readU8 : Deserializer UInt8 :=
+@[inline] def readU8 : Deserializer UInt8 :=
   next
 
 def readU16 : Deserializer UInt16 := do
@@ -156,30 +149,27 @@ def readU64 : Deserializer UInt64 := do
   let bytes ← take 8
   return bytes.asBEtoNat.toUInt64
 
-def readBytes (len: Nat) : Deserializer ByteArray :=
-  take len
+def readString (len: Nat) : Deserializer String :=
+  return String.fromUTF8Unchecked (← take len)
 
-def readString (len: Nat) : Deserializer String := do
-  let bytes ← take len
-  return String.fromUTF8Unchecked bytes
-
-def repeatFor (len : Nat) (d : Deserializer α) : Deserializer (List α) := 
-  match len with
-  | 0     => return []
-  | n + 1 => List.cons <$> d <*> repeatFor n d
+def repeatFor (len : Nat) (d : Deserializer α) : Deserializer (List α) := do
+  return List.replicate len (← d)
 
 partial def repeatIl (d : Deserializer α) : Deserializer (List α) := do
-  let {bytes, pos} ← get
-  if bytes[pos]! == 0xff
-    then return []
-    else List.cons <$> d <*> (repeatIl d)
+  let idx ← get
+  let ctx ← read
+  if h : idx < ctx.size then
+    if ctx.bytes[idx]'(by rw [ctx.valid]; exact h) == 0xff then
+      return []
+    else return (← d) :: (← repeatIl d)
+  else throw .UnexpectedEOF
 
 def readLink : Deserializer Cid := do
   let ty ← readU8
   if ty != 0x58 then throw (DeserializeError.UnknownCborTag ty)
   let len ← readU8
   if len == 0 then throw (DeserializeError.CidLenOutOfRange len)
-  let bytes ← (readBytes len.toNat)
+  let bytes ← take len.toNat
   if bytes[0]! != 0 then throw (DeserializeError.CidPrefix bytes[0]!)
   let bytes := bytes.extract 1 bytes.size
   let cid := Cid.fromBytes bytes
@@ -238,7 +228,7 @@ partial def deserializeIpld : Deserializer Ipld := do
     -- Major type 2: byte string
     if 0x40 <= x && x <= 0x5b then
       let len ← readLen (major.toNat - 0x40)
-      let bytes ← readBytes len
+      let bytes ← take len
       return .bytes bytes
     -- Major type 3: text string
     if 0x60 <= x && x <= 0x7b then
@@ -257,9 +247,7 @@ partial def deserializeIpld : Deserializer Ipld := do
       return .mkObject list
     throw (DeserializeError.UnknownCborTag major)
 
-def deserialize (x: ByteArray) : Except DeserializeError Ipld :=
-  match EStateM.run deserializeIpld (ByteCursor.mk x 0) with
-  | EStateM.Result.ok    x _ => Except.ok x
-  | EStateM.Result.error e _ => Except.error e
+def deserialize (x : ByteArray) : Except DeserializeError Ipld :=
+  (StateT.run (ReaderT.run deserializeIpld ⟨x, x.size, by eq_refl⟩) 0).1
 
 end DagCbor
