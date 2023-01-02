@@ -1,6 +1,5 @@
 import Lean
 import Ipld.Cid
---import Ipld.Multihash
 
 inductive Ipld where
   | null
