@@ -1,4 +1,5 @@
 import Ipld.UnsignedVarInt
+import YatimaStdLib.ByteArray
 import LSpec
 
 structure Case where

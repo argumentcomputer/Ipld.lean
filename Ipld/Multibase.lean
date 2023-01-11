@@ -1,5 +1,4 @@
 import Ipld.MultibaseImpl
-
 import YatimaStdLib.Nat
 
 /-- An instance of the Multibase specification -/
