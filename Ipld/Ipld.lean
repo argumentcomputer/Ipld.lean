@@ -1,5 +1,6 @@
 import Lean
 import Ipld.Cid
+import YatimaStdLib.RBNode
 
 inductive Ipld where
   | null

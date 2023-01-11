@@ -1,4 +1,4 @@
-import YatimaStdLib
+import YatimaStdLib.Nat
 
 namespace UnsignedVarInt
 

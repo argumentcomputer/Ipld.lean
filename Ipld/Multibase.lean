@@ -1,6 +1,6 @@
 import Ipld.MultibaseImpl
 
-import YatimaStdLib
+import YatimaStdLib.Nat
 
 /-- An instance of the Multibase specification -/
 structure Multibase where

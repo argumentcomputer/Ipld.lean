@@ -1,6 +1,7 @@
 import Ipld.UnsignedVarInt
 import Ipld.Multibase
 import Ipld.Keccak
+import YatimaStdLib.ByteArray
 
 instance : Repr ByteArray where
   reprPrec x prec := Repr.addAppParen ("ByteArray " ++ toString x.data) prec
